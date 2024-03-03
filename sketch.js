@@ -4,19 +4,20 @@
 // https://stackoverflow.com/questions/45947570/how-to-attach-an-event-listener-to-the-dom-depending-upon-the-screen-size
 
 import * as THREE from "three";
+import { FontLoader } from "three/addons/loaders/FontLoader.js";
+import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
 // import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+// import { GUI } from "three/addons/libs/lil-gui.module.min.js";
 // import { gsap } from "gsap";
 import { RectAreaLightHelper } from "three/addons/helpers/RectAreaLightHelper.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 var scene, clock, camera, renderer;
 var directionalLight, ambientLight;
 var axesHelper, gridHelper, dLightHelper, dLightShadowHelper;
-let gui;
+// let gui;
 let bloomPass, composer;
 
 const bloomParams = {
@@ -41,7 +42,6 @@ const pylonWidth = 0.4;
 const frameTopLength = 1 + clothWidth;
 
 let wind, windBody, windVelocity;
-let model;
 
 const cameraStartingPos = new THREE.Vector3(
   -15,
@@ -164,12 +164,10 @@ function initScene() {
   // view.scale.set(1.3, 1.3, 1.3);
   */
 
-  // loadModel();
-
   axesHelper = getAxesHelper(10);
-  // scene.add(axesHelper);
+  scene.add(axesHelper);
   gridHelper = getGridHelper(100);
-  // scene.add(gridHelper);
+  scene.add(gridHelper);
   dLightHelper = getDLightHelper();
   // scene.add(dLightHelper);
   dLightShadowHelper = getDLightShadowHelper();
@@ -556,6 +554,12 @@ function initObjects() {
   //   .onChange(function (value) {
   //     bloomPass.radius = Number(value);
   //   });
+
+  /* ------------------------------ testing text ------------------------------ */
+
+  createText("hello", (mesh) => {
+    scene.add(mesh);
+  });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -687,7 +691,6 @@ function update(renderer, scene, camera, clock) {
 
 function render() {
   const deltaTime = clock.getDelta();
-  // console.log(deltaTime);
   updatePhysics(deltaTime); // COMMENT THIS BACK IN
   renderer.render(scene, camera); // COMMENT THIS BACK IN
 }
@@ -822,6 +825,34 @@ function createSphere(sr, mass, pos, quat, material) {
   createRigidBody(threeObject, shape, mass, pos, quat);
 
   return threeObject;
+}
+
+function createText(text, cb) {
+  const loader = new FontLoader();
+
+  loader.load("./assets/IBM Plex Sans Light_Regular.json", function (font) {
+    const geo = new TextGeometry(text, {
+      font: font,
+      size: 1,
+      height: 0.5,
+      // bevelEnabled: true,
+      // bevelThickness: 10,
+      // bevelSize: 8,
+      // bevelOffset: 0,
+      // bevelSegments: 5,
+    });
+
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      opacity: 1,
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(0, 6, 0);
+    mesh.rotateY(90);
+    // return mesh;
+    cb(mesh);
+  });
 }
 
 function createRigidBody(threeObject, physicsShape, mass, pos, quat) {
