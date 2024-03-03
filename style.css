@@ -1,0 +1,62 @@
+html {
+  margin: 0;
+  padding: 0;
+  background: black;
+}
+
+@font-face {
+  font-family: "IBMPlexSans-Light";
+  src: url("/assets/IBMPlexSans-Light.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "IBMPlexSans-LightItalic";
+  src: url("/assets/IBMPlexSans-LightItalic.otf") format("opentype");
+}
+
+body {
+  overflow: hidden;
+}
+
+#sketch {
+  display: block;
+  z-index: 0;
+}
+
+.modal {
+  width: 100vw;
+  z-index: 5;
+
+  position: absolute;
+  display: flex;
+
+  flex-direction: column;
+
+  color: whitesmoke;
+  font-family: "IBMPlexSans-Light", sans serif;
+  font-size: 1em;
+}
+
+#mobile {
+  display: none;
+}
+
+.modal * {
+  /* border: 2px solid pink; */
+  margin: 0px;
+  padding: 3px;
+  overflow: auto;
+}
+
+@media (max-width: 700px) {
+  #desktop {
+    display: none;
+  }
+
+  #mobile {
+    display: inline-block;
+
+    text-align: center;
+    font-size: 2em;
+  }
+}

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+  <body>
+    <div class="modal" id="desktop">
+      <p>Press the space bar to create wind.</p>
+    </div>
+    <div class="modal" id="mobile">
+      <p>Blow into the mic to create wind.</p>
+    </div>
+    <div id="sketch">
+      <script src="/ammo.wasm.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.0/gsap.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.0/MotionPathPlugin.min.js"></script>
+
+      <script
+        async
+        src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"
+      ></script>
+
+      <script type="importmap">
+        {
+          "imports": {
+            "three": "https://unpkg.com/three@0.153.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.153.0/examples/jsm/"       
+          }
+        }
+      </script>
+
+      <script type="module" src="sketch.js"></script>
+  </body>
+</html>
