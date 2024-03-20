@@ -1,23 +1,23 @@
-/* Source code taken from https://github.com/mrdoob/three.js/blob/master/examples/physics_ammo_cloth.html#L423 */
+// https://github.com/mrdoob/three.js/blob/master/examples/physics_ammo_cloth.html#L423
 // https://medium.com/@bluemagnificent/intro-to-javascript-3d-physics-using-ammo-js-and-three-js-dd48df81f591
-// Virtual Museums of Małopolska (Virtual Museums of Małopolska) (https://sketchfab.com/3d-models/vessel-decorated-with-garlands-1ba7ae93249946779e0a83478fef853b)
 // https://stackoverflow.com/questions/45947570/how-to-attach-an-event-listener-to-the-dom-depending-upon-the-screen-size
 
 import * as THREE from "three";
 import { FontLoader } from "three/addons/loaders/FontLoader.js";
 import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
-// import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-// import { GUI } from "three/addons/libs/lil-gui.module.min.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GUI } from "three/addons/libs/lil-gui.module.min.js";
 // import { gsap } from "gsap";
 import { RectAreaLightHelper } from "three/addons/helpers/RectAreaLightHelper.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import forgottens from "./forgottens.json" assert { type: "json" };
 
 var scene, clock, camera, renderer;
 var directionalLight, ambientLight;
 var axesHelper, gridHelper, dLightHelper, dLightShadowHelper;
-// let gui;
+let gui;
 let bloomPass, composer;
 
 const bloomParams = {
@@ -34,8 +34,8 @@ let transformAux;
 const rigidBodies = [];
 
 let cloth;
-const clothWidth = 4;
-const clothHeight = 6;
+const clothWidth = 8;
+const clothHeight = 10;
 const clothPos = new THREE.Vector3(-3, 0, 2); // bottom right corner?
 const pylonHeight = clothPos.y + clothHeight;
 const pylonWidth = 0.4;
@@ -65,40 +65,7 @@ function init() {
   initPhysics();
   initObjects();
   initInput();
-
-  document.addEventListener("DOMContentLoaded", (ev) => {
-    gsap.registerPlugin(MotionPathPlugin);
-    const keyframes = [
-      new THREE.Vector3(6, 4, 2),
-      new THREE.Vector3(0, 2, -2),
-      // { x: 6, y: 4, z: 2 },
-      // { x: 0, y: 2, z: -2 },
-      // cameraStartingPos,
-    ];
-    // const keyframes = [
-    //   { x: 6, y: 4, z: 2 },
-    //   { x: 0, y: 2, z: -2 },
-    //   // cameraStartingPos,
-    // ];
-    const TL = gsap.timeline();
-
-    TL.from(camera.position, {
-      motionPath: {
-        path: keyframes,
-        align: keyframes,
-        alignOrigin: [0.5, 0.5], // sets the origin at the center of the obj
-        autoRotate: true,
-        // type: "cubic",
-      },
-      duration: 2,
-      ease: "power4.out",
-      onUpdate: () => {
-        camera.lookAt(0, 0, 0); // don't think this works
-      },
-    });
-
-    TL.kill();
-  });
+  initCameraMovement();
 }
 
 /* -------------------------------------------------------------------------- */
@@ -109,71 +76,18 @@ function initScene() {
   scene = new THREE.Scene();
   clock = new THREE.Clock();
 
-  directionalLight = getDirectionalLight(1);
-  directionalLight.position.set(-100, 100, 50);
-  // scene.add(directionalLight);
-  ambientLight = getAmbientLight(1);
-  // scene.add(ambientLight);
-
-  const offset = 3;
-  const rectX = -6;
-  const rectLight = new THREE.RectAreaLight(
-    0xffe500,
-    1,
-    frameTopLength,
-    pylonHeight
-  );
-  rectLight.position.set(rectX, pylonHeight / 2, offset);
-  rectLight.rotation.set(0, -Math.PI / 2, 0);
-  rectLight.lookAt(clothPos);
-  scene.add(rectLight);
-  let rectLightHelper = new RectAreaLightHelper(rectLight);
-  // scene.add(rectLightHelper);
-
-  const rectLight_1 = new THREE.RectAreaLight(
-    0x4e00ff,
-    1,
-    frameTopLength,
-    pylonHeight
-  );
-  rectLight_1.position.set(rectX, pylonHeight / 2, -offset);
-  rectLight_1.rotation.set(0, -Math.PI / 2, 0);
-  rectLight_1.lookAt(clothPos);
-  scene.add(rectLight_1);
-  let rectLightHelper_1 = new RectAreaLightHelper(rectLight_1);
-  // scene.add(rectLightHelper_1);
-
-  /*
-  const textureLoader = new THREE.TextureLoader();
-  const bg = textureLoader.load(
-    "/assets/Screenshot 2023-06-08 at 12.09.23 AM.png"
-  );
-  const plane = new THREE.PlaneGeometry(clothWidth, pylonHeight);
-  const planeMat = new THREE.MeshStandardMaterial({
-    map: bg,
-  });
-  const view = new THREE.Mesh(plane, planeMat);
-  scene.add(view);
-  view.position.set(
-    clothPos.x + 4,
-    pylonHeight / 2,
-    clothPos.z - clothWidth / 2 - pylonWidth
-  );
-  view.scale.set(0.8, 0.8, 0.8);
-  view.rotation.set(-Math.PI, -Math.PI / 2, 0);
-  // view.scale.set(1.3, 1.3, 1.3);
-  */
+  addLighting();
 
   axesHelper = getAxesHelper(10);
-  scene.add(axesHelper);
+  // scene.add(axesHelper);
   gridHelper = getGridHelper(100);
-  scene.add(gridHelper);
+  // scene.add(gridHelper);
   dLightHelper = getDLightHelper();
   // scene.add(dLightHelper);
   dLightShadowHelper = getDLightShadowHelper();
   // scene.add(dLightShadowHelper);
 
-  // gui = new GUI();
+  gui = new GUI();
 
   const scale = 150;
   const vertOffset = 3;
@@ -198,8 +112,9 @@ function initScene() {
   document.body.appendChild(renderer.domElement);
   // update(renderer, scene, camera, clock);
   // renderer.shadowMap.enabled = true;
-  renderer.setClearColor(0xffffff, 0);
+  renderer.setClearColor(0xffffff, 1);
 
+  /*
   const renderScene = new RenderPass(scene, camera);
   bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
@@ -214,9 +129,10 @@ function initScene() {
   composer = new EffectComposer(renderer);
   composer.addPass(renderScene);
   composer.addPass(bloomPass); // this defaults any unlit area (e.g. bg) to black
+  */
 
-  // const controls = new OrbitControls(camera, renderer.domElement);
-  // controls.update();
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.update();
 
   window.addEventListener("resize", onWindowResize);
 }
@@ -262,9 +178,10 @@ function initPhysics() {
 
 function initObjects() {
   const pos = new THREE.Vector3();
-  const quat = new THREE.Quaternion();
+  // const quat = new THREE.Quaternion(); // orig!
+  const quat = new THREE.Euler();
 
-  /* -------------------------- Cloth graphic object -------------------------- */
+  /* -------------------------- cloth graphic object -------------------------- */
 
   const clothNumSegmentsZ = clothWidth * 5;
   const clothNumSegmentsY = clothHeight * 5;
@@ -295,7 +212,7 @@ function initObjects() {
   cloth.receiveShadow = true;
   scene.add(cloth);
 
-  /* --------------------------- cloth physic object -------------------------- */
+  /* --------------------------- cloth physics object -------------------------- */
 
   const softBodyHelpers = new Ammo.btSoftBodyHelpers();
   const clothCorner00 = new Ammo.btVector3(
@@ -303,17 +220,6 @@ function initObjects() {
     clothPos.y + clothHeight,
     clothPos.z - 0.5
   );
-
-  // console.log(clothPos, clothWidth, frameTopLength);
-  // console.log(
-  //   "clothPos.z - 1 + clothWidth + 0.5 = ",
-  //   clothPos.z - 1 + clothWidth + 0.5
-  // );
-  // console.log("clothPos.z - frameTopLength + 0.5 = ", clothPos.z - frameTopLength + 0.5);
-  // console.log(
-  //   "clothPos.z - clothWidth + 1.5 = ",
-  //   clothPos.z - clothWidth + 1.5
-  // );
 
   const clothCorner01 = new Ammo.btVector3(
     clothPos.x,
@@ -359,11 +265,11 @@ function initObjects() {
 
   /* --------------------------------- window --------------------------------- */
 
-  const frameMass = 2;
+  const frameMass = 8;
   const baseMaterial = new THREE.MeshPhongMaterial({ color: 0xc1a06b });
 
   pos.set(clothPos.x, 0.5 * pylonHeight, clothPos.z - frameTopLength);
-  const frameLeft = createParalellepiped(
+  const frameLeft = createParallelepiped(
     pylonWidth,
     pylonHeight,
     pylonWidth,
@@ -376,7 +282,7 @@ function initObjects() {
   frameLeft.receiveShadow = true;
 
   pos.set(clothPos.x, 0.5 * pylonHeight, clothPos.z);
-  const frameRight = createParalellepiped(
+  const frameRight = createParallelepiped(
     pylonWidth,
     pylonHeight,
     pylonWidth,
@@ -389,7 +295,7 @@ function initObjects() {
   frameRight.receiveShadow = true;
 
   pos.set(clothPos.x, pylonHeight, clothPos.z - 0.5 * frameTopLength);
-  const frameTop = createParalellepiped(
+  const frameTop = createParallelepiped(
     pylonWidth,
     pylonWidth,
     frameTopLength + pylonWidth,
@@ -402,7 +308,7 @@ function initObjects() {
   frameTop.receiveShadow = true;
 
   pos.set(clothPos.x, 0, clothPos.z - 0.5 * frameTopLength);
-  const frameBottom = createParalellepiped(
+  const frameBottom = createParallelepiped(
     pylonWidth,
     pylonWidth,
     frameTopLength + pylonWidth,
@@ -493,7 +399,7 @@ function initObjects() {
   physicsWorld.addConstraint(c4, false);
 
   // Glue the cloth to frame
-  const influence = 0.5;
+  const influence = 1;
   // By setting influence to a value between 0 and 1, you can control the stiffness or rigidity of the connections between the anchor and the soft body.
   // Higher values make the connection more rigid, while lower values allow for more flexibility and deformation.
   clothSoftBody.appendAnchor(
@@ -517,19 +423,19 @@ function initObjects() {
     y: windVelocity.y(),
     z: windVelocity.z(),
   };
-  // const velocityFolder = gui.addFolder("velocity");
-  // velocityFolder
-  //   .add(velocityData, "x", -10, 0)
-  //   .name("x")
-  //   .onChange((value) => {
-  //     windVelocity.setX(value);
-  //   });
-  // velocityFolder
-  //   .add(velocityData, "y", -5, 5)
-  //   .name("y")
-  //   .onChange((value) => {
-  //     windVelocity.setY(value);
-  //   });
+  const velocityFolder = gui.addFolder("velocity");
+  velocityFolder
+    .add(velocityData, "x", -10, 10)
+    .name("x")
+    .onChange((value) => {
+      windVelocity.setX(value);
+    });
+  velocityFolder
+    .add(velocityData, "y", -5, 5)
+    .name("y")
+    .onChange((value) => {
+      windVelocity.setY(value);
+    });
   // velocityFolder
   //   .add(velocityData, "z", -5, 5)
   //   .name("z")
@@ -554,12 +460,321 @@ function initObjects() {
   //   .onChange(function (value) {
   //     bloomPass.radius = Number(value);
   //   });
+}
 
-  /* ------------------------------ testing text ------------------------------ */
+/* -------------------------------------------------------------------------- */
+/*                                   update                                   */
+/* -------------------------------------------------------------------------- */
 
-  createText("hello", (mesh) => {
-    scene.add(mesh);
+function update(renderer, scene, camera, clock) {
+  // window.requestAnimationFrame(function () {
+  //   update(renderer, scene, camera, clock);
+  // });
+  window.requestAnimationFrame(update);
+  render();
+  // composer.render();
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               render + resize                              */
+/* -------------------------------------------------------------------------- */
+
+function render() {
+  const deltaTime = clock.getDelta();
+  updatePhysics(deltaTime);
+  renderer.render(scene, camera);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  render();
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               update physics                               */
+/* -------------------------------------------------------------------------- */
+
+function updatePhysics(deltaTime) {
+  // Step world
+  if (physicsWorld) {
+    physicsWorld.stepSimulation(deltaTime, 10);
+
+    // Update cloth
+    const softBody = cloth.userData.physicsBody;
+    const clothPositions = cloth.geometry.attributes.position.array;
+    const numVerts = clothPositions.length / 3;
+    const nodes = softBody.get_m_nodes();
+    let indexFloat = 0;
+
+    for (let i = 0; i < numVerts; i++) {
+      const node = nodes.at(i);
+      const nodePos = node.get_m_x();
+      clothPositions[indexFloat++] = nodePos.x();
+      clothPositions[indexFloat++] = nodePos.y();
+      clothPositions[indexFloat++] = nodePos.z();
+    }
+
+    cloth.geometry.computeVertexNormals();
+    cloth.geometry.attributes.position.needsUpdate = true;
+    cloth.geometry.attributes.normal.needsUpdate = true;
+
+    // Update rigid bodies
+    for (let i = 0, il = rigidBodies.length; i < il; i++) {
+      const objThree = rigidBodies[i];
+      const objPhys = objThree.userData.physicsBody;
+      const ms = objPhys.getMotionState();
+      if (ms) {
+        ms.getWorldTransform(transformAux);
+        const p = transformAux.getOrigin();
+        const q = transformAux.getRotation();
+        objThree.position.set(p.x(), p.y(), p.z());
+        objThree.quaternion.set(q.x(), q.y(), q.z(), q.w());
+      }
+    }
+  }
+
+  // if (wind) {
+  //   windBody.applyCentralForce(windVelocity); // this doesnt do anything :')
+  // }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                   helpers                                  */
+/* -------------------------------------------------------------------------- */
+
+function getAxesHelper(size) {
+  var helper = new THREE.AxesHelper(size);
+  return helper;
+}
+
+function getGridHelper(size) {
+  var helper = new THREE.GridHelper(size, 60);
+  return helper;
+}
+
+function getDLightHelper() {
+  var helper = new THREE.DirectionalLightHelper(directionalLight);
+  return helper;
+}
+
+function getDLightShadowHelper() {
+  var helper = new THREE.CameraHelper(directionalLight.shadow.camera);
+  return helper;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                  lighting                                  */
+/* -------------------------------------------------------------------------- */
+
+function addLighting() {
+  directionalLight = getDirectionalLight(1);
+  directionalLight.position.set(-100, 100, 50);
+  // scene.add(directionalLight);
+  ambientLight = getAmbientLight(1);
+  // scene.add(ambientLight);
+
+  const offset = 3;
+  const rectX = -6;
+  const rectLight = new THREE.RectAreaLight(
+    0xffe500,
+    1,
+    frameTopLength,
+    pylonHeight
+  );
+  rectLight.position.set(rectX, pylonHeight, offset);
+  rectLight.rotation.set(0, -Math.PI / 2, 0);
+  rectLight.lookAt(clothPos);
+  scene.add(rectLight);
+  // let rectLightHelper = new RectAreaLightHelper(rectLight);
+  // scene.add(rectLightHelper);
+
+  const rectLight_1 = new THREE.RectAreaLight(
+    0x4e00ff,
+    1,
+    frameTopLength,
+    pylonHeight
+  );
+  rectLight_1.position.set(rectX, pylonHeight, -offset);
+  rectLight_1.rotation.set(0, -Math.PI / 2, 0);
+  rectLight_1.lookAt(clothPos);
+  scene.add(rectLight_1);
+  // let rectLightHelper_1 = new RectAreaLightHelper(rectLight_1);
+  // scene.add(rectLightHelper_1);
+}
+
+function getDirectionalLight(intensity) {
+  var light = new THREE.DirectionalLight(0xffffff, intensity);
+  // directional light produces rays that are all parallel to each other
+  light.castShadow = true;
+  light.shadow.mapSize.width = 1024;
+  light.shadow.camera.near = 1;
+  light.shadow.camera.far = 500;
+  var scale = 1.75;
+  return light;
+}
+
+function getAmbientLight(intensity) {
+  var light = new THREE.AmbientLight("rgb(10, 30, 50)", intensity);
+  // ambient light does not cast shadows
+  return light;
+}
+/* -------------------------------------------------------------------------- */
+/*                               camera movement                              */
+/* -------------------------------------------------------------------------- */
+
+function initCameraMovement() {
+  document.addEventListener("DOMContentLoaded", (ev) => {
+    gsap.registerPlugin(MotionPathPlugin);
+    const keyframes = [
+      new THREE.Vector3(6, 4, 2),
+      new THREE.Vector3(0, 2, -2),
+      // { x: 6, y: 4, z: 2 },
+      // { x: 0, y: 2, z: -2 },
+      // cameraStartingPos,
+    ];
+    // const keyframes = [
+    //   { x: 6, y: 4, z: 2 },
+    //   { x: 0, y: 2, z: -2 },
+    //   // cameraStartingPos,
+    // ];
+    const TL = gsap.timeline();
+
+    TL.from(camera.position, {
+      motionPath: {
+        path: keyframes,
+        align: keyframes,
+        alignOrigin: [0.5, 0.5], // sets the origin at the center of the obj
+        autoRotate: true,
+        // type: "cubic",
+      },
+      duration: 2,
+      ease: "power4.out",
+      onUpdate: () => {
+        camera.lookAt(0, 0, 0); // don't think this works
+      },
+    });
+
+    TL.kill();
   });
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              object functions                              */
+/* -------------------------------------------------------------------------- */
+
+function createParallelepiped(sx, sy, sz, mass, pos, eu, material) {
+  const threeObject = new THREE.Mesh(
+    new THREE.BoxGeometry(sx, sy, sz, 1, 1, 1),
+    material
+  );
+  const shape = new Ammo.btBoxShape(
+    new Ammo.btVector3(sx * 0.5, sy * 0.5, sz * 0.5)
+  );
+  shape.setMargin(margin);
+
+  createRigidBody(threeObject, shape, mass, pos, eu);
+
+  return threeObject;
+}
+
+function createSphere(sr, mass, pos, eu, material) {
+  const threeObject = new THREE.Mesh(
+    new THREE.SphereGeometry(sr, 16, 32),
+    material
+  );
+  const shape = new Ammo.btSphereShape(sr); // does radius need to be divided by 2?
+  shape.setMargin(margin);
+
+  createRigidBody(threeObject, shape, mass, pos, eu);
+
+  return threeObject;
+}
+
+function createText(text, cb) {
+  const loader = new FontLoader();
+
+  loader.load("./assets/IBM Plex Sans Light_Regular.json", function (font) {
+    const geo = new TextGeometry(text, {
+      font: font,
+      size: 0.33,
+      height: 0.5,
+      // bevelEnabled: true,
+      // bevelThickness: 0.01,
+      // bevelSize: 8,
+      // bevelOffset: 0,
+      // bevelSegments: 5,
+    });
+
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      opacity: 1,
+    });
+
+    const mesh = new THREE.Mesh(geo, mat);
+
+    cb(mesh); // callback
+  });
+}
+
+function createTextRB(text, pos, eu) {
+  return new Promise((resolve, reject) => {
+    createText(text, function (mesh) {
+      let shape = new Ammo.btConvexHullShape();
+      let vertices = mesh.geometry.attributes.position.array;
+
+      for (let i = 0; i < vertices.length; i += 3) {
+        shape.addPoint(
+          new Ammo.btVector3(vertices[i], vertices[i + 1], vertices[i + 2])
+        );
+      }
+      createRigidBody(mesh, shape, 1, pos, eu);
+      resolve(mesh);
+    });
+  });
+}
+
+function createRigidBody(threeObject, physicsShape, mass, pos, eu) {
+  threeObject.position.copy(pos);
+  // threeObject.quaternion.copy(quat);
+
+  // const position = new THREE.Vector3().copy(pos);
+  const euler = new THREE.Quaternion().setFromEuler(eu);
+
+  const transform = new Ammo.btTransform();
+  transform.setIdentity();
+  transform.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
+  // transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
+  transform.setRotation(
+    new Ammo.btQuaternion(euler.x, euler.y, euler.z, euler.w)
+  );
+
+  const motionState = new Ammo.btDefaultMotionState(transform);
+
+  const localInertia = new Ammo.btVector3(0, 0, 0);
+  physicsShape.calculateLocalInertia(mass, localInertia);
+
+  const rbInfo = new Ammo.btRigidBodyConstructionInfo(
+    mass,
+    motionState,
+    physicsShape,
+    localInertia
+  );
+  const body = new Ammo.btRigidBody(rbInfo);
+
+  threeObject.userData.physicsBody = body;
+
+  scene.add(threeObject);
+
+  if (mass > 0) {
+    rigidBodies.push(threeObject);
+
+    // Disable deactivation
+    body.setActivationState(4);
+  }
+
+  physicsWorld.addRigidBody(body);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -567,27 +782,38 @@ function initObjects() {
 /* -------------------------------------------------------------------------- */
 
 function initInput() {
-  function createWind() {
-    const pos = new THREE.Vector3(
+  async function createWind() {
+    const startingPos = new THREE.Vector3(
       // THREE.MathUtils.randFloat(-3, 0), // x, move toward user
       THREE.MathUtils.randFloat(clothPos.x - 3, clothPos.x), // x, move away from user
       THREE.MathUtils.randFloat(0, pylonHeight), // y
       THREE.MathUtils.randFloat(0, clothPos.z - frameTopLength) // z
     );
-    const quat = new THREE.Quaternion(0, 0, 0, 1);
+    // const quat = new THREE.Quaternion(0, 0, 0, 1);
+    const eulerPos = new THREE.Euler(0, -Math.PI / 2, 0);
 
-    wind = createSphere(
-      1,
-      1,
-      pos,
-      quat,
-      new THREE.MeshBasicMaterial({
-        color: 0x333333,
-        transparent: true,
-        opacity: 0.001,
-      })
-    );
-    // console.log(wind);
+    // wind = createSphere(
+    //   1,
+    //   1,
+    //   startingPos,
+    //   eulerPos,
+    //   new THREE.MeshBasicMaterial({
+    //     color: 0x333333,
+    //     transparent: true,
+    //     opacity: 0.8,
+    //   })
+    // );
+
+    let index = Math.floor(Math.random() * forgottens.length);
+    // wind = await createTextRB(
+    //   forgottens[index].forgotten,
+    //   startingPos,
+    //   eulerPos
+    // );
+
+    wind = await createTextRB("x", startingPos, eulerPos);
+    // wind = createTextRB("x", startingPos, quat); // orig!
+
     windBody = wind.userData.physicsBody;
     windBody.setLinearVelocity(windVelocity);
   }
@@ -671,221 +897,4 @@ function initInput() {
       console.log("keyboard input method");
     }
   });
-}
-/* -------------------------------------------------------------------------- */
-/*                                   update                                   */
-/* -------------------------------------------------------------------------- */
-
-function update(renderer, scene, camera, clock) {
-  // window.requestAnimationFrame(function () {
-  //   update(renderer, scene, camera, clock);
-  // });
-  window.requestAnimationFrame(update);
-  render();
-  composer.render();
-}
-
-/* -------------------------------------------------------------------------- */
-/*                               render + resize                              */
-/* -------------------------------------------------------------------------- */
-
-function render() {
-  const deltaTime = clock.getDelta();
-  updatePhysics(deltaTime); // COMMENT THIS BACK IN
-  renderer.render(scene, camera); // COMMENT THIS BACK IN
-}
-
-function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  render();
-}
-
-/* -------------------------------------------------------------------------- */
-/*                               update physics                               */
-/* -------------------------------------------------------------------------- */
-
-function updatePhysics(deltaTime) {
-  // Step world
-  if (physicsWorld) {
-    physicsWorld.stepSimulation(deltaTime, 10);
-
-    // Update cloth
-    const softBody = cloth.userData.physicsBody;
-    const clothPositions = cloth.geometry.attributes.position.array;
-    const numVerts = clothPositions.length / 3;
-    const nodes = softBody.get_m_nodes();
-    let indexFloat = 0;
-
-    for (let i = 0; i < numVerts; i++) {
-      const node = nodes.at(i);
-      const nodePos = node.get_m_x();
-      clothPositions[indexFloat++] = nodePos.x();
-      clothPositions[indexFloat++] = nodePos.y();
-      clothPositions[indexFloat++] = nodePos.z();
-    }
-
-    cloth.geometry.computeVertexNormals();
-    cloth.geometry.attributes.position.needsUpdate = true;
-    cloth.geometry.attributes.normal.needsUpdate = true;
-
-    // Update rigid bodies
-    for (let i = 0, il = rigidBodies.length; i < il; i++) {
-      const objThree = rigidBodies[i];
-      const objPhys = objThree.userData.physicsBody;
-      const ms = objPhys.getMotionState();
-      if (ms) {
-        ms.getWorldTransform(transformAux);
-        const p = transformAux.getOrigin();
-        const q = transformAux.getRotation();
-        objThree.position.set(p.x(), p.y(), p.z());
-        objThree.quaternion.set(q.x(), q.y(), q.z(), q.w());
-      }
-    }
-  }
-
-  if (wind) {
-    windBody.applyCentralForce(windVelocity); // this doesnt do anything :')
-  }
-}
-
-/* -------------------------------------------------------------------------- */
-/*                                   helpers                                  */
-/* -------------------------------------------------------------------------- */
-
-function getAxesHelper(size) {
-  var helper = new THREE.AxesHelper(size);
-  return helper;
-}
-
-function getGridHelper(size) {
-  var helper = new THREE.GridHelper(size, 60);
-  return helper;
-}
-
-function getDLightHelper() {
-  var helper = new THREE.DirectionalLightHelper(directionalLight);
-  return helper;
-}
-
-function getDLightShadowHelper() {
-  var helper = new THREE.CameraHelper(directionalLight.shadow.camera);
-  return helper;
-}
-
-/* -------------------------------------------------------------------------- */
-/*                                  lighting                                  */
-/* -------------------------------------------------------------------------- */
-
-function getDirectionalLight(intensity) {
-  var light = new THREE.DirectionalLight(0xffffff, intensity);
-  // directional light produces rays that are all parallel to each other
-  light.castShadow = true;
-  light.shadow.mapSize.width = 1024;
-  light.shadow.camera.near = 1;
-  light.shadow.camera.far = 500;
-  var scale = 1.75;
-  return light;
-}
-
-function getAmbientLight(intensity) {
-  var light = new THREE.AmbientLight("rgb(10, 30, 50)", intensity);
-  // ambient light does not cast shadows
-  return light;
-}
-
-/* -------------------------------------------------------------------------- */
-/*                              object functions                              */
-/* -------------------------------------------------------------------------- */
-
-function createParalellepiped(sx, sy, sz, mass, pos, quat, material) {
-  const threeObject = new THREE.Mesh(
-    new THREE.BoxGeometry(sx, sy, sz, 1, 1, 1),
-    material
-  );
-  const shape = new Ammo.btBoxShape(
-    new Ammo.btVector3(sx * 0.5, sy * 0.5, sz * 0.5)
-  );
-  shape.setMargin(margin);
-
-  createRigidBody(threeObject, shape, mass, pos, quat);
-
-  return threeObject;
-}
-
-function createSphere(sr, mass, pos, quat, material) {
-  const threeObject = new THREE.Mesh(
-    new THREE.SphereGeometry(sr, 16, 32),
-    material
-  );
-  const shape = new Ammo.btSphereShape(sr); // does radius need to be divided by 2?
-  shape.setMargin(margin);
-
-  createRigidBody(threeObject, shape, mass, pos, quat);
-
-  return threeObject;
-}
-
-function createText(text, cb) {
-  const loader = new FontLoader();
-
-  loader.load("./assets/IBM Plex Sans Light_Regular.json", function (font) {
-    const geo = new TextGeometry(text, {
-      font: font,
-      size: 1,
-      height: 0.5,
-      // bevelEnabled: true,
-      // bevelThickness: 10,
-      // bevelSize: 8,
-      // bevelOffset: 0,
-      // bevelSegments: 5,
-    });
-
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      opacity: 1,
-    });
-
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(0, 6, 0);
-    mesh.rotateY(90);
-    // return mesh;
-    cb(mesh);
-  });
-}
-
-function createRigidBody(threeObject, physicsShape, mass, pos, quat) {
-  threeObject.position.copy(pos);
-  threeObject.quaternion.copy(quat);
-
-  const transform = new Ammo.btTransform();
-  transform.setIdentity();
-  transform.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
-  transform.setRotation(new Ammo.btQuaternion(quat.x, quat.y, quat.z, quat.w));
-  const motionState = new Ammo.btDefaultMotionState(transform);
-
-  const localInertia = new Ammo.btVector3(0, 0, 0);
-  physicsShape.calculateLocalInertia(mass, localInertia);
-
-  const rbInfo = new Ammo.btRigidBodyConstructionInfo(
-    mass,
-    motionState,
-    physicsShape,
-    localInertia
-  );
-  const body = new Ammo.btRigidBody(rbInfo);
-
-  threeObject.userData.physicsBody = body;
-
-  scene.add(threeObject);
-
-  if (mass > 0) {
-    rigidBodies.push(threeObject);
-
-    // Disable deactivation
-    body.setActivationState(4);
-  }
-
-  physicsWorld.addRigidBody(body);
 }

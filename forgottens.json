@@ -1,0 +1,32 @@
+[
+  { "type": "factual", "forgotten": "The definition of mythomane" },
+  { "type": "ancestral", "forgotten": "The year of the Gwangju Uprising" },
+  { "type": "sentimental", "forgotten": "What we argued about last" },
+  {
+    "type": "ancestral",
+    "forgotten": "The names of the people who lived here before us"
+  },
+  {
+    "type": "logstical",
+    "forgotten": "That you are vegan"
+  },
+  { "type": "ancestral", "forgotten": "The date my grandfather died" },
+  { "type": "factual", "forgotten": "How to solve a quadratic equation" },
+  { "type": "factual", "forgotten": "The eightfold path" },
+  {
+    "type": "sentimental",
+    "forgotten": "What I did on my seventeenth birthday"
+  },
+  { "type": "sentimental", "forgotten": "To say thank you and I’m sorry" },
+  { "type": "factual", "forgotten": "What became of the Ottoman Empire" },
+  { "type": "logstical", "forgotten": "What I named the second draft" },
+  {
+    "type": "ancestral",
+    "forgotten": "How to say \"do not wait for me\" in Korean"
+  },
+  { "type": "factual", "forgotten": "The seven layers of the OSI Model" },
+  {
+    "type": "sentimental",
+    "forgotten": "That I used to hide my dad's profession from my friends"
+  }
+]

@@ -621,3 +621,60 @@ async function onMicGranted(stream) {
   };
   mic.connect(node).connect(audioContext.destination);
 }
+
+/* -------------------------------------------------------------------------- */
+
+// function createTextRB(text, cb, pos, quat) {
+//   const loader = new FontLoader();
+//   let geo;
+//   let mat;
+
+//   loader.load("./assets/IBM Plex Sans Light_Regular.json", function (font) {
+//     geo = new TextGeometry(text, {
+//       font: font,
+//       size: 1,
+//       height: 0.5,
+//       // bevelEnabled: true,
+//       // bevelThickness: 10,
+//       // bevelSize: 8,
+//       // bevelOffset: 0,
+//       // bevelSegments: 5,
+//     });
+
+//     mat = new THREE.MeshBasicMaterial({
+//       color: 0xffffff,
+//       opacity: 1,
+//     });
+//   });
+
+//   const mesh = new THREE.Mesh(geo, mat);
+//   mesh.position.set(0, 0, 0);
+
+//   let posAtt = mesh.geometry.position.array;
+//   console.log(posAtt);
+//   if (posAtt) {
+//     let vertices = posAtt.array;
+//     console.log("posAtt = ", posAtt);
+//     if (vertices) {
+//       for (let i = 0; i < vertices.length; i += 3) {
+//         shape.addPoint(
+//           new Ammo.btVector3(vertices[i], vertices[i + 1], vertices[i + 2])
+//         );
+//       }
+//       console.log("vertices = ", vertices);
+//     } else {
+//       console.error("Error with array property of posAtt: ", error);
+//     }
+//   } else {
+//     console.error("Error with posAtt: ", error);
+//   }
+
+//   // let shape = new Ammo.btConvexHullShape();
+//   // let vertices = mesh.geometry.attributes.position.array;
+//   // for (let i = 0; i < vertices.length; i += 3) {
+//   //   shape.addPoint(
+//   //     new Ammo.btVector3(vertices[i], vertices[i + 1], vertices[i + 2])
+//   //   );
+//   // }
+//   // createRigidBody(cb, shape, 1, pos, quat);
+// }
