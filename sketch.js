@@ -687,14 +687,16 @@ function createText(text, cb) {
     });
 
     const mesh = new THREE.Mesh(geo, mat);
+    mesh.lookAt(cameraStartingPos);
+    const eu = new THREE.Euler().setFromQuaternion(mesh.quaternion);
 
-    cb(mesh); // callback
+    cb(mesh, eu); // callback
   });
 }
 
-function createTextRB(text, pos, eu) {
+function createTextRB(text, pos) {
   return new Promise((resolve, reject) => {
-    createText(text, function (mesh) {
+    createText(text, function (mesh, eu) {
       let shape = new Ammo.btConvexHullShape();
       let vertices = mesh.geometry.attributes.position.array;
 
@@ -785,7 +787,7 @@ function initInput() {
     //   eulerPos
     // );
 
-    wind = await createTextRB("x", startingPos, eulerPos);
+    wind = await createTextRB("x", startingPos);
     // wind = createTextRB("x", startingPos, quat); // orig!
 
     windBody = wind.userData.physicsBody;
