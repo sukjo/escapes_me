@@ -36,18 +36,20 @@ const rigidBodies = [];
 let cloth;
 const clothWidth = 8;
 const clothHeight = 10;
-const clothPos = new THREE.Vector3(-3, 0, 2); // bottom right corner?
-const pylonHeight = clothPos.y + clothHeight;
+const clothPos = new THREE.Vector3(-3, 4, 2); // bottom right corner? ... orig y: 0
+const pylonHeight = clothPos.y + clothHeight * 1.2; // orig * 1.0
 const pylonWidth = 0.4;
 const frameTopLength = 1 + clothWidth;
 
 let wind, windBody, windVelocity;
 
-const cameraStartingPos = new THREE.Vector3(
-  -15,
-  pylonHeight / 2 - pylonWidth * 6,
-  -pylonWidth
-);
+// const cameraStartingPos = new THREE.Vector3(
+//   -15,
+//   pylonHeight / 2 - pylonWidth * 6,
+//   -pylonWidth
+// );
+
+const cameraStartingPos = new THREE.Vector3(-10, 12, -8.7);
 
 /* -------------------------------------------------------------------------- */
 /*                                    ammo                                    */
@@ -79,7 +81,7 @@ function initScene() {
   addLighting();
 
   axesHelper = getAxesHelper(10);
-  // scene.add(axesHelper);
+  scene.add(axesHelper);
   gridHelper = getGridHelper(100);
   // scene.add(gridHelper);
   dLightHelper = getDLightHelper();
@@ -112,27 +114,13 @@ function initScene() {
   document.body.appendChild(renderer.domElement);
   // update(renderer, scene, camera, clock);
   // renderer.shadowMap.enabled = true;
-  renderer.setClearColor(0xffffff, 1);
-
-  /*
-  const renderScene = new RenderPass(scene, camera);
-  bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    1.5,
-    0.4,
-    0.85
-  );
-  bloomPass.threshold = bloomParams.threshold;
-  bloomPass.strength = bloomParams.strength;
-  bloomPass.radius = bloomParams.radius;
-
-  composer = new EffectComposer(renderer);
-  composer.addPass(renderScene);
-  composer.addPass(bloomPass); // this defaults any unlit area (e.g. bg) to black
-  */
+  renderer.setClearColor(0xeeeef6, 1);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.update();
+  // controls.addEventListener("change", function () {
+  //   console.log("Camera position: ", camera.position);
+  // });
 
   window.addEventListener("resize", onWindowResize);
 }
@@ -266,7 +254,11 @@ function initObjects() {
   /* --------------------------------- window --------------------------------- */
 
   const frameMass = 8;
-  const baseMaterial = new THREE.MeshPhongMaterial({ color: 0xc1a06b });
+  const baseMaterial = new THREE.MeshBasicMaterial({
+    color: new THREE.Color("rgb(0, 0, 0)"),
+    transparent: true,
+    opacity: 0.001,
+  });
 
   pos.set(clothPos.x, 0.5 * pylonHeight, clothPos.z - frameTopLength);
   const frameLeft = createParallelepiped(
@@ -441,24 +433,6 @@ function initObjects() {
   //   .name("z")
   //   .onChange((value) => {
   //     windVelocity.setZ(value);
-  //   });
-  // const bloomFolder = gui.addFolder("bloom effect");
-  // bloomFolder.add(bloomParams, "exposure", 0.1, 2).onChange(function (value) {
-  //   renderer.toneMappingExposure = Math.pow(value, 4.0);
-  // });
-  // bloomFolder
-  //   .add(bloomParams, "threshold", 0.0, 1.0)
-  //   .onChange(function (value) {
-  //     bloomPass.threshold = Number(value);
-  //   });
-  // bloomFolder.add(bloomParams, "strength", 0.0, 3.0).onChange(function (value) {
-  //   bloomPass.strength = Number(value);
-  // });
-  // bloomFolder
-  //   .add(bloomParams, "radius", 0.0, 1.0)
-  //   .step(0.01)
-  //   .onChange(function (value) {
-  //     bloomPass.radius = Number(value);
   //   });
 }
 
@@ -790,7 +764,7 @@ function initInput() {
       THREE.MathUtils.randFloat(0, clothPos.z - frameTopLength) // z
     );
     // const quat = new THREE.Quaternion(0, 0, 0, 1);
-    const eulerPos = new THREE.Euler(0, -Math.PI / 2, 0);
+    const eulerPos = new THREE.Euler(0 - Math.PI / 2, -Math.PI / 2);
 
     // wind = createSphere(
     //   1,
@@ -818,83 +792,23 @@ function initInput() {
     windBody.setLinearVelocity(windVelocity);
   }
 
-  async function blowWind() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
-      const audioContext = new AudioContext();
-      const source = audioContext.createMediaStreamSource(stream);
-      const analyzer = audioContext.createAnalyser();
-
-      /* The AnalyserNode interface represents a node able to provide real-time frequency 
-    and time-domain analysis information. It is an AudioNode that passes the audio stream 
-    unchanged from the input to the output, but allows you to take the generated data, 
-    process it, and create audio visualizations */
-
-      source.connect(analyzer);
-      // analyzer.connect(audioContext.destination);
-
-      function updateVolume() {
-        const bufferLength = analyzer.frequencyBinCount;
-        // represents the number of data points (frequency bins) that will be available for analysis
-        // larger buffer length provides more detailed frequency info but requires more processing power
-
-        const dataArray = new Uint8Array(bufferLength);
-
-        analyzer.getByteFrequencyData(dataArray);
-        // get audio data and store it in an array
-
-        let sum = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          sum += dataArray[i];
-        }
-        const volume = sum / bufferLength;
-        // calculate the average volume by summing the values in dataArray and dividing by the buffer length
-        if (volume > 5) {
-          createWind();
-          // console.log("Mic volume:", volume);
-        }
-      }
-
-      setInterval(updateVolume, 200); // Adjust the interval as needed
-    } catch (error) {
-      console.error("Error accessing microphone:", error);
-    }
-  }
-
-  function spaceWind(ev) {
-    if (ev.keyCode == 32) {
-      createWind();
-
-      /*
-        gui
-          .add(wind.geometry.parameters, "radius", 0.5, 5)
-          .name("size")
-          .onChange((value) => {
-            wind.geometry.parameters.radius = value;
-          });
-        */
-    }
-  }
-
   let widthMatch = window.matchMedia("(max-width: 700px)");
 
   if (widthMatch.matches) {
-    blowWind();
+    window.addEventListener("touchstart", createWind);
   } else {
-    window.addEventListener("keydown", spaceWind);
+    window.addEventListener("click", createWind);
   }
 
   widthMatch.addEventListener("change", function (mm) {
     if (mm.matches) {
-      window.removeEventListener("keydown", spaceWind);
-      blowWind();
-      console.log("mic input method");
+      window.removeEventListener("click", createWind);
+      window.addEventListener("touchstart", createWind);
+      console.log("tracking touch events");
     } else {
-      window.addEventListener("keydown", spaceWind);
-      // window.removeEventListener(..., blowWind);
-      console.log("keyboard input method");
+      window.removeEventListener("touchstart", createWind);
+      window.addEventListener("click", createWind);
+      console.log("tracking click events");
     }
   });
 }

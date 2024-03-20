@@ -678,3 +678,119 @@ async function onMicGranted(stream) {
 //   // }
 //   // createRigidBody(cb, shape, 1, pos, quat);
 // }
+
+/*
+  const renderScene = new RenderPass(scene, camera);
+  bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    1.5,
+    0.4,
+    0.85
+  );
+  bloomPass.threshold = bloomParams.threshold;
+  bloomPass.strength = bloomParams.strength;
+  bloomPass.radius = bloomParams.radius;
+
+  composer = new EffectComposer(renderer);
+  composer.addPass(renderScene);
+  composer.addPass(bloomPass); // this defaults any unlit area (e.g. bg) to black
+  */
+
+// const bloomFolder = gui.addFolder("bloom effect");
+// bloomFolder.add(bloomParams, "exposure", 0.1, 2).onChange(function (value) {
+//   renderer.toneMappingExposure = Math.pow(value, 4.0);
+// });
+// bloomFolder
+//   .add(bloomParams, "threshold", 0.0, 1.0)
+//   .onChange(function (value) {
+//     bloomPass.threshold = Number(value);
+//   });
+// bloomFolder.add(bloomParams, "strength", 0.0, 3.0).onChange(function (value) {
+//   bloomPass.strength = Number(value);
+// });
+// bloomFolder
+//   .add(bloomParams, "radius", 0.0, 1.0)
+//   .step(0.01)
+//   .onChange(function (value) {
+//     bloomPass.radius = Number(value);
+//   });
+
+// const cameraFolder = gui.addFolder("camera position");
+// let cameraControls = {
+//   x: camera.position.x,
+//   y: camera.position.y,
+//   z: camera.position.z,
+// };
+
+// cameraFolder
+//   .add(cameraControls, "x", -50, 50)
+//   .name("x")
+//   .onChange((val) => {
+//     camera.position.x = val;
+//   });
+// cameraFolder
+//   .add(cameraControls, "y", -50, 50)
+//   .name("y")
+//   .onChange((val) => {
+//     camera.position.y = val;
+//   });
+// cameraFolder
+//   .add(cameraControls, "z", -50, 50)
+//   .name("z")
+//   .onChange((val) => {
+//     camera.position.z = val;
+//   });
+
+/*
+        gui
+          .add(wind.geometry.parameters, "radius", 0.5, 5)
+          .name("size")
+          .onChange((value) => {
+            wind.geometry.parameters.radius = value;
+          });
+        */
+
+async function blowWind() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+    });
+    const audioContext = new AudioContext();
+    const source = audioContext.createMediaStreamSource(stream);
+    const analyzer = audioContext.createAnalyser();
+
+    /* The AnalyserNode interface represents a node able to provide real-time frequency 
+    and time-domain analysis information. It is an AudioNode that passes the audio stream 
+    unchanged from the input to the output, but allows you to take the generated data, 
+    process it, and create audio visualizations */
+
+    source.connect(analyzer);
+    // analyzer.connect(audioContext.destination);
+
+    function updateVolume() {
+      const bufferLength = analyzer.frequencyBinCount;
+      // represents the number of data points (frequency bins) that will be available for analysis
+      // larger buffer length provides more detailed frequency info but requires more processing power
+
+      const dataArray = new Uint8Array(bufferLength);
+
+      analyzer.getByteFrequencyData(dataArray);
+      // get audio data and store it in an array
+
+      let sum = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        sum += dataArray[i];
+      }
+      const volume = sum / bufferLength;
+      // calculate the average volume by summing the values in dataArray and dividing by the buffer length
+      if (volume > 5) {
+        createWind();
+        // console.log("Mic volume:", volume);
+      }
+    }
+
+    setInterval(updateVolume, 200); // Adjust the interval as needed
+  } catch (error) {
+    console.error("Error accessing microphone:", error);
+  }
+}
