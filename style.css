@@ -1,3 +1,12 @@
+:root {
+  font-size: 12px;
+
+  --walnut-brown: #59544b;
+  --feldgrau: #3f4b3b;
+  --tea-green: #c5edacff;
+  --tea-green-2: #dbfeb8ff;
+}
+
 html {
   margin: 0;
   padding: 0;
@@ -42,10 +51,14 @@ body {
 }
 
 .modal * {
-  /* border: 2px solid pink; */
   margin: 0px;
   padding: 3px;
   overflow: auto;
+}
+
+.css3d-text {
+  color: black;
+  font-size: 0.1rem;
 }
 
 @media (max-width: 700px) {

@@ -1,32 +1,60 @@
 [
-  { "type": "factual", "forgotten": "The definition of mythomane" },
-  { "type": "ancestral", "forgotten": "The year of the Gwangju Uprising" },
-  { "type": "sentimental", "forgotten": "What we argued about last" },
+  { "type": "factual", "forgotten": "the definition of mythomane" },
+  { "type": "ancestral", "forgotten": "the year of the Gwangju Uprising" },
+  { "type": "sentimental", "forgotten": "what we argued about last" },
   {
     "type": "ancestral",
-    "forgotten": "The names of the people who lived here before us"
+    "forgotten": "the names of the people who lived here before us"
   },
   {
     "type": "logstical",
-    "forgotten": "That you are vegan"
+    "forgotten": "that you are vegan"
   },
-  { "type": "ancestral", "forgotten": "The date my grandfather died" },
-  { "type": "factual", "forgotten": "How to solve a quadratic equation" },
-  { "type": "factual", "forgotten": "The eightfold path" },
+  { "type": "ancestral", "forgotten": "the date my grandfather died" },
+  { "type": "factual", "forgotten": "how to solve a quadratic equation" },
+  { "type": "factual", "forgotten": "the eightfold path" },
   {
     "type": "sentimental",
-    "forgotten": "What I did on my seventeenth birthday"
+    "forgotten": "what I did on my seventeenth birthday"
   },
-  { "type": "sentimental", "forgotten": "To say thank you and I’m sorry" },
-  { "type": "factual", "forgotten": "What became of the Ottoman Empire" },
-  { "type": "logstical", "forgotten": "What I named the second draft" },
+  { "type": "sentimental", "forgotten": "to say thank you and I’m sorry" },
+  { "type": "factual", "forgotten": "what became of the Ottoman Empire" },
+  { "type": "logstical", "forgotten": "what I named the second draft" },
   {
     "type": "ancestral",
-    "forgotten": "How to say \"do not wait for me\" in Korean"
+    "forgotten": "how to say \"do not wait for me\" in Korean"
   },
-  { "type": "factual", "forgotten": "The seven layers of the OSI Model" },
+  { "type": "factual", "forgotten": "the seven layers of the OSI Model" },
   {
     "type": "sentimental",
-    "forgotten": "That I used to hide my dad's profession from my friends"
+    "forgotten": "that I used to hide my dad's profession from my friends"
+  },
+  {
+    "type": "logstical",
+    "forgotten": "to imagine my skull whapping against the pavement before I left the house"
+  },
+  {
+    "type": "logstical",
+    "forgotten": "to thank the whole supply chain before my meal"
+  },
+  {
+    "type": "factual",
+    "forgotten": "my whereabouts on October 7, 2023"
+  },
+  {
+    "type": "sentimental",
+    "forgotten": "how to mistrust a bike"
+  },
+  {
+    "type": "factual",
+    "forgotten": "every single image I saw before falling asleep"
+  },
+  {
+    "type": "sentimental",
+    "forgotten": "that I had a body, that there was an I"
+  },
+  {
+    "type": "sentimental",
+    "forgotten": "that you knew hard times, too"
   }
 ]

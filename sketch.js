@@ -12,6 +12,10 @@ import { RectAreaLightHelper } from "three/addons/helpers/RectAreaLightHelper.js
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import {
+  CSS3DRenderer,
+  CSS3DObject,
+} from "three/addons/renderers/CSS3DRenderer.js";
 import forgottens from "./forgottens.json" assert { type: "json" };
 
 var scene, clock, camera, renderer;
@@ -41,7 +45,11 @@ const pylonHeight = clothPos.y + clothHeight * 1.2; // orig * 1.0
 const pylonWidth = 0.4;
 const frameTopLength = 1 + clothWidth;
 
-let wind, windBody, windVelocity;
+const textSize = 0.33;
+let capsule, capsuleBody, windVelocity;
+let textObjects = [];
+
+let webglrenderer, css3drenderer;
 
 // const cameraStartingPos = new THREE.Vector3(
 //   -15,
@@ -81,7 +89,7 @@ function initScene() {
   addLighting();
 
   axesHelper = getAxesHelper(10);
-  scene.add(axesHelper);
+  // scene.add(axesHelper);
   gridHelper = getGridHelper(100);
   // scene.add(gridHelper);
   dLightHelper = getDLightHelper();
@@ -107,6 +115,9 @@ function initScene() {
   // camera.position.set(-15, pylonHeight / 2 - pylonWidth * 6, -pylonWidth);
   camera.lookAt(scene.position);
 
+  initRenderers();
+
+  /*
   // scene.background = new THREE.Color(0xffffff);
   renderer = new THREE.WebGLRenderer();
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -114,15 +125,34 @@ function initScene() {
   document.body.appendChild(renderer.domElement);
   // update(renderer, scene, camera, clock);
   // renderer.shadowMap.enabled = true;
+  // renderer.setClearColor(0x59544b, 1);
   renderer.setClearColor(0xeeeef6, 1);
-
-  const controls = new OrbitControls(camera, renderer.domElement);
+*/
+  const controls = new OrbitControls(camera, css3drenderer.domElement); // swap this for webglrenderer?
   controls.update();
   // controls.addEventListener("change", function () {
   //   console.log("Camera position: ", camera.position);
   // });
 
   window.addEventListener("resize", onWindowResize);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                  renderers                                 */
+/* -------------------------------------------------------------------------- */
+
+function initRenderers() {
+  webglrenderer = new THREE.WebGLRenderer();
+  webglrenderer.setPixelRatio(window.devicePixelRatio);
+  webglrenderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(webglrenderer.domElement);
+  webglrenderer.setClearColor(0xeeeef6, 1);
+
+  css3drenderer = new CSS3DRenderer();
+  css3drenderer.setSize(window.innerWidth, window.innerHeight);
+  css3drenderer.domElement.style.position = "absolute";
+  css3drenderer.domElement.style.top = 0;
+  document.body.appendChild(css3drenderer.domElement);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -171,8 +201,8 @@ function initObjects() {
 
   /* -------------------------- cloth graphic object -------------------------- */
 
-  const clothNumSegmentsZ = clothWidth * 5;
-  const clothNumSegmentsY = clothHeight * 5;
+  const clothNumSegmentsZ = clothWidth * 6; // more segments = more wrinkling
+  const clothNumSegmentsY = clothHeight * 6;
 
   // const clothPos = new THREE.Vector3(-3, 3, 2);
 
@@ -437,26 +467,14 @@ function initObjects() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                                   update                                   */
-/* -------------------------------------------------------------------------- */
-
-function update(renderer, scene, camera, clock) {
-  // window.requestAnimationFrame(function () {
-  //   update(renderer, scene, camera, clock);
-  // });
-  window.requestAnimationFrame(update);
-  render();
-  // composer.render();
-}
-
-/* -------------------------------------------------------------------------- */
 /*                               render + resize                              */
 /* -------------------------------------------------------------------------- */
 
 function render() {
   const deltaTime = clock.getDelta();
   updatePhysics(deltaTime);
-  renderer.render(scene, camera);
+  webglrenderer.render(scene, camera);
+  css3drenderer.render(scene, camera);
 }
 
 function onWindowResize() {
@@ -467,8 +485,17 @@ function onWindowResize() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                               update physics                               */
+/*                                   updates                                  */
 /* -------------------------------------------------------------------------- */
+
+function update(renderer, scene, camera, clock) {
+  // window.requestAnimationFrame(function () {
+  //   update(renderer, scene, camera, clock);
+  // });
+  window.requestAnimationFrame(update);
+  render();
+  // composer.render();
+}
 
 function updatePhysics(deltaTime) {
   // Step world
@@ -509,9 +536,22 @@ function updatePhysics(deltaTime) {
     }
   }
 
+  setInterval(clearBodies, 1000);
+  // updateTextPositions();
+
   // if (wind) {
+  //   console.log("wind happening");
+  //   windBody.activate();
   //   windBody.applyCentralForce(windVelocity); // this doesnt do anything :')
   // }
+}
+
+function updateTextPositions() {
+  for (let i = 0; i < textObjects.length; i++) {
+    const capsule = rigidBodies[i];
+    const textObject = textObjects[i];
+    textObject.position.copy(capsule.position);
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -552,7 +592,7 @@ function addLighting() {
   const offset = 3;
   const rectX = -6;
   const rectLight = new THREE.RectAreaLight(
-    0xffe500,
+    0x4e00ff,
     1,
     frameTopLength,
     pylonHeight
@@ -565,7 +605,7 @@ function addLighting() {
   // scene.add(rectLightHelper);
 
   const rectLight_1 = new THREE.RectAreaLight(
-    0x4e00ff,
+    0xdbfeb8,
     1,
     frameTopLength,
     pylonHeight
@@ -666,13 +706,62 @@ function createSphere(sr, mass, pos, eu, material) {
   return threeObject;
 }
 
+function createCapsule(width, pos) {
+  const radius = textSize;
+  const threeObject = new THREE.Mesh(
+    new THREE.CapsuleGeometry(radius, width),
+    new THREE.MeshBasicMaterial({
+      color: 0xfdfd00,
+      opacity: 1,
+    })
+  );
+  threeObject.rotateZ(-Math.PI / 2);
+  const directionToCamera = new THREE.Vector3().subVectors(
+    cameraStartingPos,
+    threeObject.position
+  ); // calculate direction by taking the difference of 2 vectors
+
+  // threeObject.lookAt(cameraStartingPos);
+  const angle = Math.atan2(directionToCamera.x, directionToCamera.z);
+  threeObject.rotateY(angle);
+
+  const eu = new THREE.Euler().setFromQuaternion(threeObject.quaternion);
+
+  const shape = new Ammo.btCapsuleShape(radius, width);
+  shape.setMargin(margin);
+
+  createRigidBody(threeObject, shape, 1, pos, eu);
+
+  return threeObject;
+}
+
+function createTextEl(text, pos) {
+  const el = document.createElement("div");
+  el.className = `css3d-text`;
+  el.textContent = text;
+
+  const obj = new CSS3DObject(el);
+  obj.position.copy(pos);
+
+  // console.log(obj.position);
+  // const directionToCamera = new THREE.Vector3().subVectors(
+  //   cameraStartingPos,
+  //   obj.position
+  // );
+  // const angle = Math.atan2(directionToCamera.x, directionToCamera.z);
+  // obj.rotate3d(0, angle, 0);
+  obj.lookAt(cameraStartingPos);
+
+  return obj;
+}
+
 function createText(text, cb) {
   const loader = new FontLoader();
 
   loader.load("./assets/IBM Plex Sans Light_Regular.json", function (font) {
     const geo = new TextGeometry(text, {
       font: font,
-      size: 0.33,
+      size: textSize,
       height: 0.5,
       // bevelEnabled: true,
       // bevelThickness: 0.01,
@@ -753,47 +842,46 @@ function createRigidBody(threeObject, physicsShape, mass, pos, eu) {
   physicsWorld.addRigidBody(body);
 }
 
+// function rotateTowardsCamera(object, camera) {
+//   const directionToCamera = new THREE.Vector3()
+//     .subVectors(camera.position, object.position)
+//     .normalize();
+//   const quat = new THREE.Quaternion().setFromUnitVectors(
+//     new THREE.Vector3(0, 0, 1),
+//     directionToCamera
+//   );
+//   object.setRotationFromQuaternion(quat);
+// }
+
+function clearBodies() {
+  const ww = window.innerWidth / 2;
+  const wh = window.innerHeight / 2;
+
+  for (let i = 0; i < rigidBodies.length; i++) {
+    const capsule = rigidBodies[i];
+    const textObj = textObjects[i];
+    const pos = capsule.position;
+
+    // not the most precise method, since ww wh are 2D and also do not factor in camera angle. but it'll do for now
+    if (pos.x < -ww || pos.x > ww || pos.y < -wh || pos.y > wh) {
+      console.log("removing capsule and text object at ", pos);
+
+      scene.remove(capsule); // remove body from scene
+      physicsWorld.removeRigidBody(capsule.userData.physicsBody); // remove physics body from simulation
+      scene.remove(textObj);
+
+      rigidBodies.splice(i, 1);
+      textObjects.splice(i, 1);
+      i--; // update counter to new array length
+    }
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                 interaction                                */
 /* -------------------------------------------------------------------------- */
 
 function initInput() {
-  async function createWind() {
-    const startingPos = new THREE.Vector3(
-      // THREE.MathUtils.randFloat(-3, 0), // x, move toward user
-      THREE.MathUtils.randFloat(clothPos.x - 3, clothPos.x), // x, move away from user
-      THREE.MathUtils.randFloat(0, pylonHeight), // y
-      THREE.MathUtils.randFloat(0, clothPos.z - frameTopLength) // z
-    );
-    // const quat = new THREE.Quaternion(0, 0, 0, 1);
-    const eulerPos = new THREE.Euler(0 - Math.PI / 2, -Math.PI / 2);
-
-    // wind = createSphere(
-    //   1,
-    //   1,
-    //   startingPos,
-    //   eulerPos,
-    //   new THREE.MeshBasicMaterial({
-    //     color: 0x333333,
-    //     transparent: true,
-    //     opacity: 0.8,
-    //   })
-    // );
-
-    let index = Math.floor(Math.random() * forgottens.length);
-    // wind = await createTextRB(
-    //   forgottens[index].forgotten,
-    //   startingPos,
-    //   eulerPos
-    // );
-
-    wind = await createTextRB("x", startingPos);
-    // wind = createTextRB("x", startingPos, quat); // orig!
-
-    windBody = wind.userData.physicsBody;
-    windBody.setLinearVelocity(windVelocity);
-  }
-
   let widthMatch = window.matchMedia("(max-width: 700px)");
 
   if (widthMatch.matches) {
@@ -813,4 +901,34 @@ function initInput() {
       console.log("tracking click events");
     }
   });
+}
+
+async function createWind() {
+  const startingPos = new THREE.Vector3(
+    // THREE.MathUtils.randFloat(-3, 0), // x, move toward user
+    THREE.MathUtils.randFloat(clothPos.x - 3, clothPos.x), // x, move away from user
+    THREE.MathUtils.randFloat(0, pylonHeight), // y
+    THREE.MathUtils.randFloat(0, clothPos.z - frameTopLength) // z
+  );
+  const eulerPos = new THREE.Euler(0 - Math.PI / 2, -Math.PI / 2);
+
+  capsule = createCapsule(5, startingPos);
+  const index = Math.floor(Math.random() * forgottens.length);
+  const textObject = createTextEl(
+    forgottens[index].forgotten,
+    capsule.position
+  );
+  scene.add(textObject);
+  textObjects.push(textObject);
+
+  // capsule = await createTextRB(
+  //   forgottens[index].forgotten,
+  //   startingPos,
+  //   eulerPos
+  // );
+
+  // capsule = await createTextRB("x", startingPos);
+
+  capsuleBody = capsule.userData.physicsBody;
+  capsuleBody.setLinearVelocity(windVelocity); // comment this back in!
 }
