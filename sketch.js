@@ -32,7 +32,7 @@ const bloomParams = {
 };
 
 let physicsWorld;
-const gravityConstant = -9.8;
+const gravityConstant = -5; // -9.8
 const margin = 0.05;
 let transformAux;
 const rigidBodies = [];
@@ -57,7 +57,7 @@ let webglrenderer, css3drenderer;
 //   -pylonWidth
 // );
 
-const cameraStartingPos = new THREE.Vector3(-10, 12, -8.7);
+const cameraStartingPos = new THREE.Vector3(-10, 12, 8.7);
 
 /* -------------------------------------------------------------------------- */
 /*                                    ammo                                    */
@@ -89,7 +89,7 @@ function initScene() {
   addLighting();
 
   axesHelper = getAxesHelper(10);
-  // scene.add(axesHelper);
+  scene.add(axesHelper);
   gridHelper = getGridHelper(100);
   // scene.add(gridHelper);
   dLightHelper = getDLightHelper();
@@ -283,7 +283,7 @@ function initObjects() {
 
   /* --------------------------------- window --------------------------------- */
 
-  const frameMass = 8;
+  const frameMass = 1;
   const baseMaterial = new THREE.MeshBasicMaterial({
     color: new THREE.Color("rgb(0, 0, 0)"),
     transparent: true,
@@ -447,7 +447,7 @@ function initObjects() {
   };
   const velocityFolder = gui.addFolder("velocity");
   velocityFolder
-    .add(velocityData, "x", -10, 10)
+    .add(velocityData, "x", -50, 50)
     .name("x")
     .onChange((value) => {
       windVelocity.setX(value);
@@ -523,6 +523,9 @@ function updatePhysics(deltaTime) {
 
     // Update rigid bodies
     for (let i = 0, il = rigidBodies.length; i < il; i++) {
+      // console.log(`i: ${i}`);
+      // console.log(`il: ${il}`);
+
       const objThree = rigidBodies[i];
       const objPhys = objThree.userData.physicsBody;
       const ms = objPhys.getMotionState();
@@ -537,7 +540,7 @@ function updatePhysics(deltaTime) {
   }
 
   setInterval(clearBodies, 1000);
-  // updateTextPositions();
+  updateTextPositions();
 
   // if (wind) {
   //   console.log("wind happening");
@@ -576,6 +579,21 @@ function getDLightHelper() {
 function getDLightShadowHelper() {
   var helper = new THREE.CameraHelper(directionalLight.shadow.camera);
   return helper;
+}
+
+function addStartingPosHelper() {
+  const geo = new THREE.BoxGeometry(-3, clothHeight, clothWidth);
+
+  const mat = new THREE.MeshBasicMaterial({ color: 0x000 });
+
+  const helper = new THREE.Mesh(geo, mat);
+
+  helper.position.set(
+    clothPos.x / 2 - 3,
+    clothPos.y + clothHeight / 2,
+    clothPos.z - clothWidth / 2 - pylonWidth
+  );
+  scene.add(helper);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -693,18 +711,18 @@ function createParallelepiped(sx, sy, sz, mass, pos, eu, material) {
   return threeObject;
 }
 
-function createSphere(sr, mass, pos, eu, material) {
-  const threeObject = new THREE.Mesh(
-    new THREE.SphereGeometry(sr, 16, 32),
-    material
-  );
-  const shape = new Ammo.btSphereShape(sr); // does radius need to be divided by 2?
-  shape.setMargin(margin);
+// function createSphere(sr, mass, pos, eu, material) {
+//   const threeObject = new THREE.Mesh(
+//     new THREE.SphereGeometry(sr, 16, 32),
+//     material
+//   );
+//   const shape = new Ammo.btSphereShape(sr); // does radius need to be divided by 2?
+//   shape.setMargin(margin);
 
-  createRigidBody(threeObject, shape, mass, pos, eu);
+//   createRigidBody(threeObject, shape, mass, pos, eu);
 
-  return threeObject;
-}
+//   return threeObject;
+// }
 
 function createCapsule(width, pos) {
   const radius = textSize;
@@ -712,6 +730,7 @@ function createCapsule(width, pos) {
     new THREE.CapsuleGeometry(radius, width),
     new THREE.MeshBasicMaterial({
       color: 0xfdfd00,
+      transparent: true,
       opacity: 1,
     })
   );
@@ -730,75 +749,98 @@ function createCapsule(width, pos) {
   const shape = new Ammo.btCapsuleShape(radius, width);
   shape.setMargin(margin);
 
-  createRigidBody(threeObject, shape, 1, pos, eu);
+  createRigidBody(threeObject, shape, 2, pos, eu);
 
   return threeObject;
 }
 
-function createTextEl(text, pos) {
-  const el = document.createElement("div");
-  el.className = `css3d-text`;
-  el.textContent = text;
+// function createTextEl(text, pos) {
+//   const el = document.createElement("div");
+//   el.className = `css3d-text`;
+//   el.textContent = text;
 
-  const obj = new CSS3DObject(el);
-  obj.position.copy(pos);
+//   const obj = new CSS3DObject(el);
+//   obj.position.copy(pos);
 
-  // console.log(obj.position);
-  // const directionToCamera = new THREE.Vector3().subVectors(
-  //   cameraStartingPos,
-  //   obj.position
-  // );
-  // const angle = Math.atan2(directionToCamera.x, directionToCamera.z);
-  // obj.rotate3d(0, angle, 0);
-  obj.lookAt(cameraStartingPos);
+//   // console.log(obj.position);
+//   // const directionToCamera = new THREE.Vector3().subVectors(
+//   //   cameraStartingPos,
+//   //   obj.position
+//   // );
+//   // const angle = Math.atan2(directionToCamera.x, directionToCamera.z);
+//   // obj.rotate3d(0, angle, 0);
+//   obj.lookAt(cameraStartingPos);
 
-  return obj;
-}
+//   return obj;
+// }
 
-function createText(text, cb) {
-  const loader = new FontLoader();
-
-  loader.load("./assets/IBM Plex Sans Light_Regular.json", function (font) {
-    const geo = new TextGeometry(text, {
-      font: font,
-      size: textSize,
-      height: 0.5,
-      // bevelEnabled: true,
-      // bevelThickness: 0.01,
-      // bevelSize: 8,
-      // bevelOffset: 0,
-      // bevelSegments: 5,
-    });
-
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      opacity: 1,
-    });
-
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.lookAt(cameraStartingPos);
-    const eu = new THREE.Euler().setFromQuaternion(mesh.quaternion);
-
-    cb(mesh, eu); // callback
-  });
-}
-
-function createTextRB(text, pos) {
+function createTextElAsync(text, pos) {
   return new Promise((resolve, reject) => {
-    createText(text, function (mesh, eu) {
-      let shape = new Ammo.btConvexHullShape();
-      let vertices = mesh.geometry.attributes.position.array;
+    const el = document.createElement("div");
+    el.className = `css3d-text`;
+    el.textContent = text;
 
-      for (let i = 0; i < vertices.length; i += 3) {
-        shape.addPoint(
-          new Ammo.btVector3(vertices[i], vertices[i + 1], vertices[i + 2])
-        );
-      }
-      createRigidBody(mesh, shape, 1, pos, eu);
-      resolve(mesh);
+    const obj = new CSS3DObject(el);
+    obj.position.copy(pos);
+
+    // Append the element to the document body
+    document.body.appendChild(obj.element);
+    // obj.lookAt(cameraStartingPos);
+
+    // Wait for the next frame update using requestAnimationFrame
+    requestAnimationFrame(() => {
+      const computedStyle = window.getComputedStyle(obj.element);
+      const width = parseFloat(computedStyle.width);
+      const height = parseFloat(computedStyle.height);
+      resolve({ obj, width, height });
     });
   });
 }
+
+// function createText(text, cb) {
+//   const loader = new FontLoader();
+
+//   loader.load("./assets/IBM Plex Sans Light_Regular.json", function (font) {
+//     const geo = new TextGeometry(text, {
+//       font: font,
+//       size: textSize,
+//       height: 0.5,
+//       // bevelEnabled: true,
+//       // bevelThickness: 0.01,
+//       // bevelSize: 8,
+//       // bevelOffset: 0,
+//       // bevelSegments: 5,
+//     });
+
+//     const mat = new THREE.MeshBasicMaterial({
+//       color: 0xffffff,
+//       opacity: 1,
+//     });
+
+//     const mesh = new THREE.Mesh(geo, mat);
+//     mesh.lookAt(cameraStartingPos);
+//     const eu = new THREE.Euler().setFromQuaternion(mesh.quaternion);
+
+//     cb(mesh, eu); // callback
+//   });
+// }
+
+// function createTextRB(text, pos) {
+//   return new Promise((resolve, reject) => {
+//     createText(text, function (mesh, eu) {
+//       let shape = new Ammo.btConvexHullShape();
+//       let vertices = mesh.geometry.attributes.position.array;
+
+//       for (let i = 0; i < vertices.length; i += 3) {
+//         shape.addPoint(
+//           new Ammo.btVector3(vertices[i], vertices[i + 1], vertices[i + 2])
+//         );
+//       }
+//       createRigidBody(mesh, shape, 1, pos, eu);
+//       resolve(mesh);
+//     });
+//   });
+// }
 
 function createRigidBody(threeObject, physicsShape, mass, pos, eu) {
   threeObject.position.copy(pos);
@@ -832,7 +874,7 @@ function createRigidBody(threeObject, physicsShape, mass, pos, eu) {
 
   scene.add(threeObject);
 
-  if (mass > 0) {
+  if (mass > 1) {
     rigidBodies.push(threeObject);
 
     // Disable deactivation
@@ -864,7 +906,7 @@ function clearBodies() {
 
     // not the most precise method, since ww wh are 2D and also do not factor in camera angle. but it'll do for now
     if (pos.x < -ww || pos.x > ww || pos.y < -wh || pos.y > wh) {
-      console.log("removing capsule and text object at ", pos);
+      // console.log("removing capsule and text object at ", pos);
 
       scene.remove(capsule); // remove body from scene
       physicsWorld.removeRigidBody(capsule.userData.physicsBody); // remove physics body from simulation
@@ -906,20 +948,40 @@ function initInput() {
 async function createWind() {
   const startingPos = new THREE.Vector3(
     // THREE.MathUtils.randFloat(-3, 0), // x, move toward user
-    THREE.MathUtils.randFloat(clothPos.x - 3, clothPos.x), // x, move away from user
-    THREE.MathUtils.randFloat(0, pylonHeight), // y
-    THREE.MathUtils.randFloat(0, clothPos.z - frameTopLength) // z
+    // THREE.MathUtils.randFloat(clothPos.x - 3, clothPos.x), // x, move away from user
+    // THREE.MathUtils.randFloat(0, pylonHeight), // y
+    // THREE.MathUtils.randFloat(0, clothPos.z - frameTopLength) // z
+    THREE.MathUtils.randFloat(clothPos.x / 2 - 3, clothPos.x / 2), // x
+    THREE.MathUtils.randFloat(clothPos.y, clothPos.y + clothHeight), // y
+    THREE.MathUtils.randFloat(
+      clothPos.z - clothWidth - pylonWidth,
+      clothPos.z - pylonWidth
+    ) // z
   );
   const eulerPos = new THREE.Euler(0 - Math.PI / 2, -Math.PI / 2);
 
-  capsule = createCapsule(5, startingPos);
   const index = Math.floor(Math.random() * forgottens.length);
-  const textObject = createTextEl(
+  // const textObject = createTextEl(
+  //   forgottens[index].forgotten,
+  //   capsule.position
+  // );
+  const { obj: textObject, width: textW } = await createTextElAsync(
     forgottens[index].forgotten,
-    capsule.position
+    startingPos
   );
+  capsule = createCapsule(textW, startingPos);
   scene.add(textObject);
   textObjects.push(textObject);
+
+  // setTimeout(() => {
+  // console.log(textObject.element);
+  // const computedStyle = window.getComputedStyle(textObject.element);
+  // console.log(computedStyle.width);
+  // const textW = parseFloat(computedStyle.width);
+  // const textH = parseFloat(computedStyle.height);
+  // console.log("width: ", textW);
+  // console.log("height: ", textH);
+  // }, 0);
 
   // capsule = await createTextRB(
   //   forgottens[index].forgotten,
@@ -931,4 +993,7 @@ async function createWind() {
 
   capsuleBody = capsule.userData.physicsBody;
   capsuleBody.setLinearVelocity(windVelocity); // comment this back in!
+
+  // console.log(`textObjects: ${textObjects}`);
+  // console.log(`rigidBodies: ${rigidBodies}`);
 }
