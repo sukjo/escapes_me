@@ -1,14 +1,14 @@
 [
   { "type": "factual", "forgotten": "the definition of mythomane" },
   { "type": "ancestral", "forgotten": "the year of the Gwangju Uprising" },
-  { "type": "sentimental", "forgotten": "what we argued about last" },
+  { "type": "sentimental", "forgotten": "the heft of the final aloo pie" },
   {
     "type": "ancestral",
     "forgotten": "the names of the people who lived here before us"
   },
   {
     "type": "logstical",
-    "forgotten": "that you are vegan"
+    "forgotten": "your dietary restriction"
   },
   { "type": "ancestral", "forgotten": "the date my grandfather died" },
   { "type": "factual", "forgotten": "how to solve a quadratic equation" },
@@ -27,7 +27,7 @@
   { "type": "factual", "forgotten": "the seven layers of the OSI Model" },
   {
     "type": "sentimental",
-    "forgotten": "that I used to hide my dad's profession from my friends"
+    "forgotten": "that I made a secret of my dad's profession"
   },
   {
     "type": "logstical",
@@ -36,6 +36,14 @@
   {
     "type": "logstical",
     "forgotten": "to thank the whole supply chain before my meal"
+  },
+  {
+    "type": "logstical",
+    "forgotten": "to send you my safe arrival"
+  },
+  {
+    "type": "ancestral",
+    "forgotten": "that my mother is someone's child, too"
   },
   {
     "type": "factual",
@@ -56,5 +64,9 @@
   {
     "type": "sentimental",
     "forgotten": "that you knew hard times, too"
+  },
+  {
+    "type": "sentimental",
+    "forgotten": "the feeling of sun on my scalp"
   }
 ]

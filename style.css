@@ -13,18 +13,13 @@ html {
   background: black;
 }
 
-@font-face {
-  font-family: "IBMPlexSans-Light";
-  src: url("/assets/IBMPlexSans-Light.otf") format("opentype");
-}
-
-@font-face {
-  font-family: "IBMPlexSans-LightItalic";
-  src: url("/assets/IBMPlexSans-LightItalic.otf") format("opentype");
-}
-
 body {
   overflow: hidden;
+}
+
+canvas {
+  width: 100vw;
+  height: 100vh;
 }
 
 #sketch {
@@ -42,7 +37,7 @@ body {
   flex-direction: column;
 
   color: whitesmoke;
-  font-family: "IBMPlexSans-Light", sans serif;
+  font-family: serif;
   font-size: 1em;
 }
 

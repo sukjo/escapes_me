@@ -3,33 +3,25 @@
 // https://stackoverflow.com/questions/45947570/how-to-attach-an-event-listener-to-the-dom-depending-upon-the-screen-size
 
 import * as THREE from "three";
-import { FontLoader } from "three/addons/loaders/FontLoader.js";
-import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GUI } from "three/addons/libs/lil-gui.module.min.js";
 // import { gsap } from "gsap";
 import { RectAreaLightHelper } from "three/addons/helpers/RectAreaLightHelper.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { AfterimagePass } from "three/addons/postprocessing/AfterimagePass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import {
   CSS3DRenderer,
   CSS3DObject,
 } from "three/addons/renderers/CSS3DRenderer.js";
 import forgottens from "./forgottens.json" assert { type: "json" };
 
-var scene, clock, camera, renderer;
-var directionalLight, ambientLight;
-var axesHelper, gridHelper, dLightHelper, dLightShadowHelper;
+let scene, clock, camera;
+let directionalLight, ambientLight;
+let axesHelper, gridHelper, dLightHelper, dLightShadowHelper;
 let gui;
-let bloomPass, composer;
-
-const bloomParams = {
-  exposure: 1,
-  strength: 0.3,
-  threshold: 0,
-  radius: 0,
-};
+let webglrenderer, css3drenderer, composer, afterimagePass;
 
 let physicsWorld;
 const gravityConstant = -5; // -9.8
@@ -49,15 +41,12 @@ const textSize = 0.33;
 let capsule, capsuleBody, windVelocity;
 let textObjects = [];
 
-let webglrenderer, css3drenderer;
+const afterimageParams = {
+  enable: true,
+};
 
-// const cameraStartingPos = new THREE.Vector3(
-//   -15,
-//   pylonHeight / 2 - pylonWidth * 6,
-//   -pylonWidth
-// );
-
-const cameraStartingPos = new THREE.Vector3(-10, 12, 8.7);
+const cameraStartingPos = new THREE.Vector3(-6.7, 9.3, 10);
+// const cameraStartingPos = new THREE.Vector3(-10, 12, 8.7);
 
 /* -------------------------------------------------------------------------- */
 /*                                    ammo                                    */
@@ -88,6 +77,18 @@ function initScene() {
 
   addLighting();
 
+  // scene.fog = new THREE.Fog(0xfff, 1, 20);
+
+  const boxgeo = new THREE.SphereGeometry(1);
+  const boxmat = new THREE.MeshBasicMaterial({ color: 0x000 });
+  const mesh = new THREE.Mesh(boxgeo, boxmat);
+  scene.add(mesh);
+  mesh.position.set(
+    scene.position.x - 3,
+    scene.position.y + clothHeight - pylonWidth,
+    scene.position.z - 3 + pylonWidth
+  );
+
   axesHelper = getAxesHelper(10);
   scene.add(axesHelper);
   gridHelper = getGridHelper(100);
@@ -97,9 +98,9 @@ function initScene() {
   dLightShadowHelper = getDLightShadowHelper();
   // scene.add(dLightShadowHelper);
 
-  gui = new GUI();
+  // gui = new GUI();
 
-  const scale = 150;
+  const scale = 90;
   const vertOffset = 3;
   camera = new THREE.OrthographicCamera(
     -window.innerWidth / scale,
@@ -113,26 +114,31 @@ function initScene() {
   scene.add(camera);
   camera.position.copy(cameraStartingPos);
   // camera.position.set(-15, pylonHeight / 2 - pylonWidth * 6, -pylonWidth);
-  camera.lookAt(scene.position);
+  const sceneCenter = new THREE.Vector3(
+    scene.position.x - 3,
+    scene.position.y + clothHeight - pylonWidth,
+    scene.position.z - clothWidth / 2 + pylonWidth * 2
+  );
+  camera.lookAt(mesh);
+  console.log(mesh.position);
 
   initRenderers();
 
-  /*
-  // scene.background = new THREE.Color(0xffffff);
-  renderer = new THREE.WebGLRenderer();
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(renderer.domElement);
-  // update(renderer, scene, camera, clock);
-  // renderer.shadowMap.enabled = true;
-  // renderer.setClearColor(0x59544b, 1);
-  renderer.setClearColor(0xeeeef6, 1);
-*/
+  composer = new EffectComposer(webglrenderer);
+  composer.addPass(new RenderPass(scene, camera));
+  afterimagePass = new AfterimagePass(0.8); // damp visible range starts at ~0.6
+  composer.addPass(afterimagePass);
+  const outputPass = new OutputPass();
+  composer.addPass(outputPass);
+
   const controls = new OrbitControls(camera, css3drenderer.domElement); // swap this for webglrenderer?
+  controls.enabled = true;
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.1;
   controls.update();
-  // controls.addEventListener("change", function () {
-  //   console.log("Camera position: ", camera.position);
-  // });
+  controls.addEventListener("change", function () {
+    console.log("Camera position: ", camera.position);
+  });
 
   window.addEventListener("resize", onWindowResize);
 }
@@ -300,8 +306,6 @@ function initObjects() {
     quat,
     baseMaterial
   );
-  frameLeft.castShadow = true;
-  frameLeft.receiveShadow = true;
 
   pos.set(clothPos.x, 0.5 * pylonHeight, clothPos.z);
   const frameRight = createParallelepiped(
@@ -313,8 +317,6 @@ function initObjects() {
     quat,
     baseMaterial
   );
-  frameRight.castShadow = true;
-  frameRight.receiveShadow = true;
 
   pos.set(clothPos.x, pylonHeight, clothPos.z - 0.5 * frameTopLength);
   const frameTop = createParallelepiped(
@@ -326,8 +328,6 @@ function initObjects() {
     quat,
     baseMaterial
   );
-  frameTop.castShadow = true;
-  frameTop.receiveShadow = true;
 
   pos.set(clothPos.x, 0, clothPos.z - 0.5 * frameTopLength);
   const frameBottom = createParallelepiped(
@@ -339,8 +339,6 @@ function initObjects() {
     quat,
     baseMaterial
   );
-  frameBottom.castShadow = true;
-  frameBottom.receiveShadow = true;
 
   /* ------------------------------- constraints ------------------------------ */
   // Glue frame together
@@ -438,26 +436,25 @@ function initObjects() {
   );
 
   /* ---------------------------------- wind ---------------------------------- */
-  windVelocity = new Ammo.btVector3(5, 0, 0); // move away from user
-  // windVelocity = new Ammo.btVector3(-5, 0, 0); // move toward user
-  const velocityData = {
-    x: windVelocity.x(),
-    y: windVelocity.y(),
-    z: windVelocity.z(),
-  };
-  const velocityFolder = gui.addFolder("velocity");
-  velocityFolder
-    .add(velocityData, "x", -50, 50)
-    .name("x")
-    .onChange((value) => {
-      windVelocity.setX(value);
-    });
-  velocityFolder
-    .add(velocityData, "y", -5, 5)
-    .name("y")
-    .onChange((value) => {
-      windVelocity.setY(value);
-    });
+  windVelocity = new Ammo.btVector3(5, 0, 0); // move away from viewer
+  // const velocityData = {
+  //   x: windVelocity.x(),
+  //   y: windVelocity.y(),
+  //   z: windVelocity.z(),
+  // };
+  // const velocityFolder = gui.addFolder("velocity");
+  // velocityFolder
+  //   .add(velocityData, "x", -50, 50)
+  //   .name("x")
+  //   .onChange((value) => {
+  //     windVelocity.setX(value);
+  //   });
+  // velocityFolder
+  //   .add(velocityData, "y", -5, 5)
+  //   .name("y")
+  //   .onChange((value) => {
+  //     windVelocity.setY(value);
+  //   });
   // velocityFolder
   //   .add(velocityData, "z", -5, 5)
   //   .name("z")
@@ -480,7 +477,8 @@ function render() {
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  webglrenderer.setSize(window.innerWidth, window.innerHeight);
+  css3drenderer.setSize(window.innerWidth, window.innerHeight);
   render();
 }
 
@@ -489,12 +487,10 @@ function onWindowResize() {
 /* -------------------------------------------------------------------------- */
 
 function update(renderer, scene, camera, clock) {
-  // window.requestAnimationFrame(function () {
-  //   update(renderer, scene, camera, clock);
-  // });
   window.requestAnimationFrame(update);
   render();
-  // composer.render();
+  afterimagePass.enabled = afterimageParams.enable;
+  composer.render();
 }
 
 function updatePhysics(deltaTime) {
@@ -523,9 +519,6 @@ function updatePhysics(deltaTime) {
 
     // Update rigid bodies
     for (let i = 0, il = rigidBodies.length; i < il; i++) {
-      // console.log(`i: ${i}`);
-      // console.log(`il: ${il}`);
-
       const objThree = rigidBodies[i];
       const objPhys = objThree.userData.physicsBody;
       const ms = objPhys.getMotionState();
@@ -731,7 +724,7 @@ function createCapsule(width, pos) {
     new THREE.MeshBasicMaterial({
       color: 0xfdfd00,
       transparent: true,
-      opacity: 1,
+      opacity: 0.01,
     })
   );
   threeObject.rotateZ(-Math.PI / 2);
@@ -753,26 +746,6 @@ function createCapsule(width, pos) {
 
   return threeObject;
 }
-
-// function createTextEl(text, pos) {
-//   const el = document.createElement("div");
-//   el.className = `css3d-text`;
-//   el.textContent = text;
-
-//   const obj = new CSS3DObject(el);
-//   obj.position.copy(pos);
-
-//   // console.log(obj.position);
-//   // const directionToCamera = new THREE.Vector3().subVectors(
-//   //   cameraStartingPos,
-//   //   obj.position
-//   // );
-//   // const angle = Math.atan2(directionToCamera.x, directionToCamera.z);
-//   // obj.rotate3d(0, angle, 0);
-//   obj.lookAt(cameraStartingPos);
-
-//   return obj;
-// }
 
 function createTextElAsync(text, pos) {
   return new Promise((resolve, reject) => {
@@ -796,51 +769,6 @@ function createTextElAsync(text, pos) {
     });
   });
 }
-
-// function createText(text, cb) {
-//   const loader = new FontLoader();
-
-//   loader.load("./assets/IBM Plex Sans Light_Regular.json", function (font) {
-//     const geo = new TextGeometry(text, {
-//       font: font,
-//       size: textSize,
-//       height: 0.5,
-//       // bevelEnabled: true,
-//       // bevelThickness: 0.01,
-//       // bevelSize: 8,
-//       // bevelOffset: 0,
-//       // bevelSegments: 5,
-//     });
-
-//     const mat = new THREE.MeshBasicMaterial({
-//       color: 0xffffff,
-//       opacity: 1,
-//     });
-
-//     const mesh = new THREE.Mesh(geo, mat);
-//     mesh.lookAt(cameraStartingPos);
-//     const eu = new THREE.Euler().setFromQuaternion(mesh.quaternion);
-
-//     cb(mesh, eu); // callback
-//   });
-// }
-
-// function createTextRB(text, pos) {
-//   return new Promise((resolve, reject) => {
-//     createText(text, function (mesh, eu) {
-//       let shape = new Ammo.btConvexHullShape();
-//       let vertices = mesh.geometry.attributes.position.array;
-
-//       for (let i = 0; i < vertices.length; i += 3) {
-//         shape.addPoint(
-//           new Ammo.btVector3(vertices[i], vertices[i + 1], vertices[i + 2])
-//         );
-//       }
-//       createRigidBody(mesh, shape, 1, pos, eu);
-//       resolve(mesh);
-//     });
-//   });
-// }
 
 function createRigidBody(threeObject, physicsShape, mass, pos, eu) {
   threeObject.position.copy(pos);
@@ -883,17 +811,6 @@ function createRigidBody(threeObject, physicsShape, mass, pos, eu) {
 
   physicsWorld.addRigidBody(body);
 }
-
-// function rotateTowardsCamera(object, camera) {
-//   const directionToCamera = new THREE.Vector3()
-//     .subVectors(camera.position, object.position)
-//     .normalize();
-//   const quat = new THREE.Quaternion().setFromUnitVectors(
-//     new THREE.Vector3(0, 0, 1),
-//     directionToCamera
-//   );
-//   object.setRotationFromQuaternion(quat);
-// }
 
 function clearBodies() {
   const ww = window.innerWidth / 2;
@@ -947,10 +864,6 @@ function initInput() {
 
 async function createWind() {
   const startingPos = new THREE.Vector3(
-    // THREE.MathUtils.randFloat(-3, 0), // x, move toward user
-    // THREE.MathUtils.randFloat(clothPos.x - 3, clothPos.x), // x, move away from user
-    // THREE.MathUtils.randFloat(0, pylonHeight), // y
-    // THREE.MathUtils.randFloat(0, clothPos.z - frameTopLength) // z
     THREE.MathUtils.randFloat(clothPos.x / 2 - 3, clothPos.x / 2), // x
     THREE.MathUtils.randFloat(clothPos.y, clothPos.y + clothHeight), // y
     THREE.MathUtils.randFloat(
@@ -961,10 +874,6 @@ async function createWind() {
   const eulerPos = new THREE.Euler(0 - Math.PI / 2, -Math.PI / 2);
 
   const index = Math.floor(Math.random() * forgottens.length);
-  // const textObject = createTextEl(
-  //   forgottens[index].forgotten,
-  //   capsule.position
-  // );
   const { obj: textObject, width: textW } = await createTextElAsync(
     forgottens[index].forgotten,
     startingPos
@@ -972,24 +881,6 @@ async function createWind() {
   capsule = createCapsule(textW, startingPos);
   scene.add(textObject);
   textObjects.push(textObject);
-
-  // setTimeout(() => {
-  // console.log(textObject.element);
-  // const computedStyle = window.getComputedStyle(textObject.element);
-  // console.log(computedStyle.width);
-  // const textW = parseFloat(computedStyle.width);
-  // const textH = parseFloat(computedStyle.height);
-  // console.log("width: ", textW);
-  // console.log("height: ", textH);
-  // }, 0);
-
-  // capsule = await createTextRB(
-  //   forgottens[index].forgotten,
-  //   startingPos,
-  //   eulerPos
-  // );
-
-  // capsule = await createTextRB("x", startingPos);
 
   capsuleBody = capsule.userData.physicsBody;
   capsuleBody.setLinearVelocity(windVelocity); // comment this back in!
