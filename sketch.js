@@ -23,6 +23,14 @@ let axesHelper, gridHelper, dLightHelper, dLightShadowHelper;
 let gui;
 let webglrenderer, css3drenderer, composer, afterimagePass;
 
+let isDone = false;
+let triedToRemembers = [];
+let triedSentimentals = [];
+let triedAncestrals = [];
+let triedFactuals = [];
+let triedLogisticals = [];
+let influence;
+
 let physicsWorld;
 const gravityConstant = -5; // -9.8
 const margin = 0.05;
@@ -65,10 +73,11 @@ function init() {
   initObjects();
   initInput();
   initCameraMovement();
+  initForgottens();
 }
 
 /* -------------------------------------------------------------------------- */
-/*                                 initialize                                 */
+/*                                    scene                                   */
 /* -------------------------------------------------------------------------- */
 
 function initScene() {
@@ -77,20 +86,18 @@ function initScene() {
 
   addLighting();
 
-  // scene.fog = new THREE.Fog(0xfff, 1, 20);
-
-  const boxgeo = new THREE.SphereGeometry(1);
-  const boxmat = new THREE.MeshBasicMaterial({ color: 0x000 });
-  const mesh = new THREE.Mesh(boxgeo, boxmat);
-  scene.add(mesh);
-  mesh.position.set(
+  const testGeo = new THREE.SphereGeometry(1);
+  const testMat = new THREE.MeshBasicMaterial({ color: 0x000 });
+  const testMesh = new THREE.Mesh(testGeo, testMat);
+  // scene.add(testMesh);
+  testMesh.position.set(
     scene.position.x - 3,
     scene.position.y + clothHeight - pylonWidth,
     scene.position.z - 3 + pylonWidth
   );
 
   axesHelper = getAxesHelper(10);
-  scene.add(axesHelper);
+  // scene.add(axesHelper);
   gridHelper = getGridHelper(100);
   // scene.add(gridHelper);
   dLightHelper = getDLightHelper();
@@ -119,8 +126,9 @@ function initScene() {
     scene.position.y + clothHeight - pylonWidth,
     scene.position.z - clothWidth / 2 + pylonWidth * 2
   );
-  camera.lookAt(mesh);
-  console.log(mesh.position);
+  camera.lookAt(scene);
+  // camera.lookAt(testMesh);
+  // console.log(testMesh.position);
 
   initRenderers();
 
@@ -136,9 +144,9 @@ function initScene() {
   controls.enableDamping = true;
   controls.dampingFactor = 0.1;
   controls.update();
-  controls.addEventListener("change", function () {
-    console.log("Camera position: ", camera.position);
-  });
+  // controls.addEventListener("change", function () {
+  //   console.log("Camera position: ", camera.position);
+  // });
 
   window.addEventListener("resize", onWindowResize);
 }
@@ -419,7 +427,7 @@ function initObjects() {
   physicsWorld.addConstraint(c4, false);
 
   // Glue the cloth to frame
-  const influence = 1;
+  influence = 1;
   // By setting influence to a value between 0 and 1, you can control the stiffness or rigidity of the connections between the anchor and the soft body.
   // Higher values make the connection more rigid, while lower values allow for more flexibility and deformation.
   clothSoftBody.appendAnchor(
@@ -461,6 +469,29 @@ function initObjects() {
   //   .onChange((value) => {
   //     windVelocity.setZ(value);
   //   });
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                 forgottens                                 */
+/* -------------------------------------------------------------------------- */
+
+function initForgottens() {
+  forgottens.forEach((forgotten, i) => {
+    if (forgotten.type === "factual") {
+      triedFactuals.push(i);
+    } else if (forgotten.type === "ancestral") {
+      triedAncestrals.push(i);
+    } else if (forgotten.type === "logistical") {
+      triedLogisticals.push(i);
+    } else if (forgotten.type === "sentimental") {
+      triedSentimentals.push(i);
+    }
+  });
+
+  // console.log("triedAncestrals: ", triedAncestrals);
+  // console.log("triedFactuals: ", triedFactuals);
+  // console.log("triedSentimentals: ", triedSentimentals);
+  // console.log("triedLogisticals: ", triedLogisticals);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -823,7 +854,7 @@ function clearBodies() {
 
     // not the most precise method, since ww wh are 2D and also do not factor in camera angle. but it'll do for now
     if (pos.x < -ww || pos.x > ww || pos.y < -wh || pos.y > wh) {
-      // console.log("removing capsule and text object at ", pos);
+      console.log("removed capsule and text object at ", pos);
 
       scene.remove(capsule); // remove body from scene
       physicsWorld.removeRigidBody(capsule.userData.physicsBody); // remove physics body from simulation
@@ -871,9 +902,17 @@ async function createWind() {
       clothPos.z - pylonWidth
     ) // z
   );
-  const eulerPos = new THREE.Euler(0 - Math.PI / 2, -Math.PI / 2);
+
+  if (triedToRemembers.length === forgottens.length) {
+    isDone = true;
+    console.log("you've forgotten everything");
+    // console.log("influence: ", influence);
+    // influence = 0;
+    return;
+  }
 
   const index = Math.floor(Math.random() * forgottens.length);
+
   const { obj: textObject, width: textW } = await createTextElAsync(
     forgottens[index].forgotten,
     startingPos
@@ -881,10 +920,8 @@ async function createWind() {
   capsule = createCapsule(textW, startingPos);
   scene.add(textObject);
   textObjects.push(textObject);
+  triedToRemembers.push(index);
 
   capsuleBody = capsule.userData.physicsBody;
   capsuleBody.setLinearVelocity(windVelocity); // comment this back in!
-
-  // console.log(`textObjects: ${textObjects}`);
-  // console.log(`rigidBodies: ${rigidBodies}`);
 }
