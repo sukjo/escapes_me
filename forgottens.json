@@ -10,7 +10,10 @@
     "type": "logistical",
     "forgotten": "your dietary restriction"
   },
-  { "type": "ancestral", "forgotten": "the date my grandfather died" },
+  {
+    "type": "ancestral",
+    "forgotten": "the year and date my grandfather passed"
+  },
   { "type": "factual", "forgotten": "how to solve a quadratic equation" },
   { "type": "factual", "forgotten": "the eightfold path" },
   {
@@ -68,5 +71,133 @@
   {
     "type": "sentimental",
     "forgotten": "the feeling of sun on my scalp"
+  },
+  {
+    "type": "factual",
+    "forgotten": "every single artwork I saw in Chicago in 2016"
+  },
+  {
+    "type": "factual",
+    "forgotten": "the Castelleti's apartment number"
+  },
+  {
+    "type": "factual",
+    "forgotten": "the surprising citrus"
+  },
+  {
+    "type": "factual",
+    "forgotten": "your half-brother's name"
+  },
+  {
+    "type": "factual",
+    "forgotten": "the second concert I'd ever been to"
+  },
+  {
+    "type": "sentimental",
+    "forgotten": "to wish you good morning, good luck"
+  },
+  {
+    "type": "ancestral",
+    "forgotten": "what my dad paid attention to instead of me"
+  },
+  {
+    "type": "logistical",
+    "forgotten": "to breathe deeply"
+  },
+  {
+    "type": "sentimental",
+    "forgotten": "that I had a hand in my own fate"
+  },
+  {
+    "type": "logistical",
+    "forgotten": "my house keys, over and over again"
+  },
+  {
+    "type": "factual",
+    "forgotten": "the benefits of taking magnesium taurate"
+  },
+  {
+    "type": "sentimental",
+    "forgotten": "the kind part of people"
+  },
+  {
+    "type": "logistical",
+    "forgotten": "to text you back for 11 months"
+  },
+  {
+    "type": "ancestral",
+    "forgotten": "the silver beads my grandpa ate habitually"
+  },
+  {
+    "type": "ancestral",
+    "forgotten": "the president's name, again"
+  },
+  {
+    "type": "logistical",
+    "forgotten": "my agency"
+  },
+  {
+    "type": "logistical",
+    "forgotten": "that I can violate other's expectations of me"
+  },
+  {
+    "type": "logistical",
+    "forgotten": "to steal, and when I steal, to feel consequence"
+  },
+  {
+    "type": "logistical",
+    "forgotten": "that I dont have to smile, or that I do"
+  },
+  {
+    "type": "logistical",
+    "forgotten": "to check for allergens"
+  },
+  {
+    "type": "logistical",
+    "forgotten": "to git pull"
+  },
+  {
+    "type": "factual",
+    "forgotten": "the story of Job"
+  },
+  {
+    "type": "factual",
+    "forgotten": "that I made a zine about endangered animals when I was 11"
+  },
+  {
+    "type": "sentimental",
+    "forgotten": "that love could be undone"
+  },
+  {
+    "type": "logistical",
+    "forgotten": "to not make hyperboles of other people's realities"
+  },
+  {
+    "type": "factual",
+    "forgotten": "the logic of eigenvectors"
+  },
+  {
+    "type": "factual",
+    "forgotten": "the Jimmy Neutron intro song"
+  },
+  {
+    "type": "factual",
+    "forgotten": "to add a transistor between power and load"
+  },
+  {
+    "type": "logistical",
+    "forgotten": "my passport in a drawer 677 miles away"
+  },
+  {
+    "type": "factual",
+    "forgotten": "those months when I wore headgear while studying for AP exams"
+  },
+  {
+    "type": "factual",
+    "forgotten": "the name of the artist I saw at the Whitney Biennial twenty-three days ago "
+  },
+  {
+    "type": "factual",
+    "forgotten": "your birthday, anymore"
   }
 ]
