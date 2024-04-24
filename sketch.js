@@ -20,7 +20,6 @@ import forgottens from "./forgottens.json" assert { type: "json" };
 let scene, clock, camera;
 let directionalLight, ambientLight;
 let axesHelper, gridHelper, dLightHelper, dLightShadowHelper;
-let gui;
 let webglrenderer, css3drenderer, composer, afterimagePass;
 
 let isDone = false;
@@ -32,7 +31,7 @@ let triedLogisticals = [];
 let influence;
 
 let physicsWorld;
-const gravityConstant = -5; // -9.8
+let gravityConstant = -5; // -9.8
 const margin = 0.05;
 let transformAux;
 const rigidBodies = [];
@@ -69,6 +68,7 @@ Ammo().then(function (AmmoLib) {
 
 function init() {
   initScene();
+  // initGui();
   initPhysics();
   initObjects();
   initInput();
@@ -104,8 +104,6 @@ function initScene() {
   // scene.add(dLightHelper);
   dLightShadowHelper = getDLightShadowHelper();
   // scene.add(dLightShadowHelper);
-
-  // gui = new GUI();
 
   const scale = 90;
   const vertOffset = 3;
@@ -149,6 +147,33 @@ function initScene() {
   // });
 
   window.addEventListener("resize", onWindowResize);
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                     GUI                                    */
+/* -------------------------------------------------------------------------- */
+
+function initGui() {
+  let gui = new GUI();
+
+  var options = {
+    gravity: -9.8,
+  };
+
+  const gravityFolder = gui.addFolder("gravity");
+  gravityFolder.add(options, "gravity", -10, 20).onChange((val) => {
+    gravityConstant = val;
+    updateGravity();
+  });
+}
+
+function updateGravity() {
+  physicsWorld.setGravity(new Ammo.btVector3(0, gravityConstant, 0));
+  // btVector3 represents the gravity vector, which is set to affect the y-axis with a magnitude defined by gravityConstant
+  physicsWorld
+    .getWorldInfo()
+    .set_m_gravity(new Ammo.btVector3(0, gravityConstant, 0));
+  // sets gravity by retrieving the world info object from physicsWorld and setting its gravity property to the same btVector3
 }
 
 /* -------------------------------------------------------------------------- */
@@ -445,30 +470,6 @@ function initObjects() {
 
   /* ---------------------------------- wind ---------------------------------- */
   windVelocity = new Ammo.btVector3(5, 0, 0); // move away from viewer
-  // const velocityData = {
-  //   x: windVelocity.x(),
-  //   y: windVelocity.y(),
-  //   z: windVelocity.z(),
-  // };
-  // const velocityFolder = gui.addFolder("velocity");
-  // velocityFolder
-  //   .add(velocityData, "x", -50, 50)
-  //   .name("x")
-  //   .onChange((value) => {
-  //     windVelocity.setX(value);
-  //   });
-  // velocityFolder
-  //   .add(velocityData, "y", -5, 5)
-  //   .name("y")
-  //   .onChange((value) => {
-  //     windVelocity.setY(value);
-  //   });
-  // velocityFolder
-  //   .add(velocityData, "z", -5, 5)
-  //   .name("z")
-  //   .onChange((value) => {
-  //     windVelocity.setZ(value);
-  //   });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -748,16 +749,21 @@ function createParallelepiped(sx, sy, sz, mass, pos, eu, material) {
 //   return threeObject;
 // }
 
-function createCapsule(width, pos) {
-  const radius = textSize;
+const fSz = 1;
+
+function createCapsule(length, pos, canvasTexture) {
+  const radius = fSz;
+  // const radius = textSize;
   const threeObject = new THREE.Mesh(
-    new THREE.CapsuleGeometry(radius, width),
+    new THREE.CapsuleGeometry(radius, length, 32, 32),
     new THREE.MeshBasicMaterial({
       color: 0xfdfd00,
-      transparent: true,
-      opacity: 0.01,
+      transparent: false,
+      opacity: 1,
+      map: canvasTexture,
     })
   );
+
   threeObject.rotateZ(-Math.PI / 2);
   const directionToCamera = new THREE.Vector3().subVectors(
     cameraStartingPos,
@@ -770,12 +776,62 @@ function createCapsule(width, pos) {
 
   const eu = new THREE.Euler().setFromQuaternion(threeObject.quaternion);
 
-  const shape = new Ammo.btCapsuleShape(radius, width);
+  const shape = new Ammo.btCapsuleShape(radius, length);
   shape.setMargin(margin);
 
   createRigidBody(threeObject, shape, 2, pos, eu);
 
   return threeObject;
+}
+
+function getTextureAndWidth(text) {
+  if (!text) return null;
+
+  const ctx = document.createElement("canvas").getContext("2d");
+  document.body.appendChild(ctx.canvas); // Temporarily add to body to see the result
+
+  const font = `${fSz}px sans serif`;
+  ctx.font = font;
+  const textMetrics = ctx.measureText(text); // pixels, dependent on fSz
+  console.log("measure text", textMetrics);
+  if (textMetrics.width === 0) return null; // Handle zero width
+
+  const w = fSz;
+  const h = textMetrics.width + fSz;
+
+  ctx.canvas.width = w;
+  ctx.canvas.height = h;
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.01)";
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.font = font;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.textBaseline = "middle";
+
+  ctx.translate(fSz / 2, h - fSz / 2); // Adjust starting point for text rotation
+  ctx.rotate(-Math.PI / 2); // Rotate the canvas to draw vertical text
+
+  ctx.fillStyle = "rgba(55, 55, 255)"; // text color
+  ctx.fillText(text, 0, 0);
+  console.log("canvas :::: ", ctx.canvas);
+  // ctx.save();
+
+  const t = new THREE.CanvasTexture(ctx.canvas);
+  t.wrapS = THREE.ClampToEdgeWrapping;
+  t.wrapT = THREE.ClampToEdgeWrapping;
+  t.repeat.set(1, 1);
+  t.offset.set(0, 0);
+  // t.offset.set(1 - textMetrics.width / w, 0);
+
+  t.generateMipmaps = false; // Disable mipmaps
+  t.needsUpdate = true; // Ensure the texture is updated
+
+  return {
+    texture: t,
+    length: h - fSz,
+  };
 }
 
 function createTextElAsync(text, pos) {
@@ -818,7 +874,7 @@ function createRigidBody(threeObject, physicsShape, mass, pos, eu) {
 
   const motionState = new Ammo.btDefaultMotionState(transform);
 
-  const localInertia = new Ammo.btVector3(0, 0, 0);
+  const localInertia = new Ammo.btVector3(0, 0, 0); // an object's resistance to changes in its rotational motion around its center of mass
   physicsShape.calculateLocalInertia(mass, localInertia);
 
   const rbInfo = new Ammo.btRigidBodyConstructionInfo(
@@ -895,8 +951,11 @@ function initInput() {
 
 async function createWind() {
   const startingPos = new THREE.Vector3(
-    THREE.MathUtils.randFloat(clothPos.x / 2 - 3, clothPos.x / 2), // x
-    THREE.MathUtils.randFloat(clothPos.y, clothPos.y + clothHeight), // y
+    THREE.MathUtils.randFloat(clothPos.x / 2 - 9, clothPos.x / 2 - 5), // x
+    THREE.MathUtils.randFloat(
+      clothPos.y + clothHeight / 2,
+      clothPos.y + clothHeight
+    ), // y
     THREE.MathUtils.randFloat(
       clothPos.z - clothWidth - pylonWidth,
       clothPos.z - pylonWidth
@@ -907,21 +966,26 @@ async function createWind() {
     isDone = true;
     console.log("you've forgotten everything");
     // console.log("influence: ", influence);
-    // influence = 0;
+    // influence = 0; // this doesn't work
     return;
   }
 
   const index = Math.floor(Math.random() * forgottens.length);
-
-  const { obj: textObject, width: textW } = await createTextElAsync(
-    forgottens[index].forgotten,
-    startingPos
-  );
-  capsule = createCapsule(textW, startingPos);
-  scene.add(textObject);
-  textObjects.push(textObject);
+  console.log("this forgotten", forgottens[index].forgotten);
+  // const { obj: textObject, width: textW } = await createTextElAsync(
+  //   forgottens[index].forgotten,
+  //   startingPos
+  // );
+  let d = getTextureAndWidth(forgottens[index].forgotten);
+  capsule = createCapsule(d.length, startingPos, d.texture);
+  // scene.add(textObject);
+  // textObjects.push(textObject);
   triedToRemembers.push(index);
 
   capsuleBody = capsule.userData.physicsBody;
   capsuleBody.setLinearVelocity(windVelocity); // comment this back in!
+  // capsuleBody.setLinearVelocity(new Ammo.btVector3(0.1, 0, 0)); // comment this back in!
+  // setTimeout(() => {
+  //   capsuleBody.setLinearVelocity(windVelocity); // comment this back in!
+  // }, 1000);
 }
