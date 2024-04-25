@@ -4,17 +4,15 @@
     <link rel="stylesheet" type="text/css" href="style.css" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>escapes me</title>
   </head>
   <body>
-    <div class="modal" id="desktop">
-      <p>Desktop</p>
-    </div>
-    <div class="modal" id="mobile">
-      <p>Mobile</p>
-    </div>
     <script src="/ammo.wasm.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.0/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.0/MotionPathPlugin.min.js"></script>
+
+    <!-- <script type="module">
+      import 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.0/gsap.min.js';
+      import 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.0/MotionPathPlugin.min.js';
+    </script> -->
 
     <script
       async
@@ -24,12 +22,12 @@
     <script type="importmap">
       {
         "imports": {
-          "three": "https://unpkg.com/three@0.153.0/build/three.module.js",
-          "three/addons/": "https://unpkg.com/three@0.153.0/examples/jsm/"
+          "three": "https://unpkg.com/three/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three/examples/jsm/",
+          "three-spritetext": "https://unpkg.com/three-spritetext/dist/three-spritetext.mjs"
         }
       }
     </script>
-
     <script type="module" src="sketch.js"></script>
   </body>
 </html>

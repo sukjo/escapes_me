@@ -10,7 +10,7 @@
 html {
   margin: 0;
   padding: 0;
-  background: black;
+  background: transparent;
 }
 
 body {
@@ -22,49 +22,5 @@ canvas {
   height: 100vh;
 }
 
-#sketch {
-  display: block;
-  z-index: 0;
-}
-
-.modal {
-  width: 100vw;
-  z-index: 5;
-
-  position: absolute;
-  display: flex;
-
-  flex-direction: column;
-
-  color: whitesmoke;
-  font-family: serif;
-  font-size: 1em;
-}
-
-#mobile {
-  display: none;
-}
-
-.modal * {
-  margin: 0px;
-  padding: 3px;
-  overflow: auto;
-}
-
-.css3d-text {
-  color: black;
-  font-size: 0.05rem;
-}
-
 @media (max-width: 700px) {
-  #desktop {
-    display: none;
-  }
-
-  #mobile {
-    display: inline-block;
-
-    text-align: center;
-    font-size: 2em;
-  }
 }

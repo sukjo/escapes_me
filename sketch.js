@@ -3,6 +3,7 @@
 // https://stackoverflow.com/questions/45947570/how-to-attach-an-event-listener-to-the-dom-depending-upon-the-screen-size
 
 import * as THREE from "three";
+import SpriteText from "three-spritetext";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GUI } from "three/addons/libs/lil-gui.module.min.js";
 // import { gsap } from "gsap";
@@ -37,8 +38,8 @@ let transformAux;
 const rigidBodies = [];
 
 let cloth;
-const clothWidth = 8;
-const clothHeight = 10;
+const clothWidth = 10; // orig 8
+const clothHeight = 12; // orig 10
 const clothPos = new THREE.Vector3(-3, 4, 2); // bottom right corner? ... orig y: 0
 const pylonHeight = clothPos.y + clothHeight * 1.2; // orig * 1.0
 const pylonWidth = 0.4;
@@ -96,6 +97,8 @@ function initScene() {
     scene.position.z - 3 + pylonWidth
   );
 
+  // createDebugSprite();
+
   axesHelper = getAxesHelper(10);
   // scene.add(axesHelper);
   gridHelper = getGridHelper(100);
@@ -105,8 +108,8 @@ function initScene() {
   dLightShadowHelper = getDLightShadowHelper();
   // scene.add(dLightShadowHelper);
 
-  const scale = 90;
-  const vertOffset = 3;
+  const scale = 30;
+  const vertOffset = 3; // orig 3
   camera = new THREE.OrthographicCamera(
     -window.innerWidth / scale,
     window.innerWidth / scale,
@@ -130,14 +133,15 @@ function initScene() {
 
   initRenderers();
 
-  composer = new EffectComposer(webglrenderer);
-  composer.addPass(new RenderPass(scene, camera));
-  afterimagePass = new AfterimagePass(0.8); // damp visible range starts at ~0.6
-  composer.addPass(afterimagePass);
-  const outputPass = new OutputPass();
-  composer.addPass(outputPass);
+  // composer = new EffectComposer(webglrenderer);
+  // composer.addPass(new RenderPass(scene, camera));
+  // afterimagePass = new AfterimagePass(0.8); // damp visible range starts at ~0.6
+  // composer.addPass(afterimagePass);
+  // const outputPass = new OutputPass();
+  // composer.addPass(outputPass);
 
-  const controls = new OrbitControls(camera, css3drenderer.domElement); // swap this for webglrenderer?
+  // const controls = new OrbitControls(camera, css3drenderer.domElement); // swap this for webglrenderer?
+  const controls = new OrbitControls(camera, webglrenderer.domElement);
   controls.enabled = true;
   controls.enableDamping = true;
   controls.dampingFactor = 0.1;
@@ -187,11 +191,11 @@ function initRenderers() {
   document.body.appendChild(webglrenderer.domElement);
   webglrenderer.setClearColor(0xeeeef6, 1);
 
-  css3drenderer = new CSS3DRenderer();
-  css3drenderer.setSize(window.innerWidth, window.innerHeight);
-  css3drenderer.domElement.style.position = "absolute";
-  css3drenderer.domElement.style.top = 0;
-  document.body.appendChild(css3drenderer.domElement);
+  // css3drenderer = new CSS3DRenderer();
+  // css3drenderer.setSize(window.innerWidth, window.innerHeight);
+  // css3drenderer.domElement.style.position = "absolute";
+  // css3drenderer.domElement.style.top = 0;
+  // document.body.appendChild(css3drenderer.domElement);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -503,14 +507,14 @@ function render() {
   const deltaTime = clock.getDelta();
   updatePhysics(deltaTime);
   webglrenderer.render(scene, camera);
-  css3drenderer.render(scene, camera);
+  // css3drenderer.render(scene, camera);
 }
 
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   webglrenderer.setSize(window.innerWidth, window.innerHeight);
-  css3drenderer.setSize(window.innerWidth, window.innerHeight);
+  // css3drenderer.setSize(window.innerWidth, window.innerHeight);
   render();
 }
 
@@ -521,8 +525,8 @@ function onWindowResize() {
 function update(renderer, scene, camera, clock) {
   window.requestAnimationFrame(update);
   render();
-  afterimagePass.enabled = afterimageParams.enable;
-  composer.render();
+  // afterimagePass.enabled = afterimageParams.enable;
+  // composer.render();
 }
 
 function updatePhysics(deltaTime) {
@@ -564,7 +568,7 @@ function updatePhysics(deltaTime) {
     }
   }
 
-  setInterval(clearBodies, 1000);
+  setInterval(removeBodies, 1000);
   updateTextPositions();
 
   // if (wind) {
@@ -648,7 +652,7 @@ function addLighting() {
   // scene.add(rectLightHelper);
 
   const rectLight_1 = new THREE.RectAreaLight(
-    0xdbfeb8,
+    0xc5edac,
     1,
     frameTopLength,
     pylonHeight
@@ -751,7 +755,39 @@ function createParallelepiped(sx, sy, sz, mass, pos, eu, material) {
 
 const fSz = 1;
 
-function createCapsule(length, pos, canvasTexture) {
+function createCapsulewithSprite(length, pos) {
+  const radius = fSz;
+  // const radius = textSize;
+  const threeObject = new THREE.Mesh(
+    new THREE.CapsuleGeometry(radius, length, 32, 32),
+    new THREE.MeshBasicMaterial({
+      color: "rgb(0, 0, 0)",
+      transparent: true,
+      opacity: 0.001,
+    })
+  );
+
+  threeObject.rotateZ(-Math.PI / 2);
+  const directionToCamera = new THREE.Vector3().subVectors(
+    cameraStartingPos,
+    threeObject.position
+  ); // calculate direction by taking the difference of 2 vectors
+
+  // threeObject.lookAt(cameraStartingPos);
+  const angle = Math.atan2(directionToCamera.x, directionToCamera.z);
+  threeObject.rotateY(angle);
+
+  const eu = new THREE.Euler().setFromQuaternion(threeObject.quaternion);
+
+  const shape = new Ammo.btCapsuleShape(radius, length);
+  shape.setMargin(margin);
+
+  createRigidBody(threeObject, shape, 2, pos, eu);
+
+  return threeObject;
+}
+
+function createCapsulwithCanvas(length, pos, canvasTexture) {
   const radius = fSz;
   // const radius = textSize;
   const threeObject = new THREE.Mesh(
@@ -784,11 +820,86 @@ function createCapsule(length, pos, canvasTexture) {
   return threeObject;
 }
 
+function createSpriteText(text) {
+  const sT = new SpriteText(text);
+  sT.color = "black";
+  sT.fontFace = "serif";
+  sT.textHeight = 0.01;
+  sT.fontSize = 80;
+  sT.strokeWidth = 0;
+  sT.backgroundColor = "rgba(0, 0, 0, 0)";
+  sT.padding = 1;
+  return sT;
+}
+
+function createSprite(text) {
+  const fontSize = 18;
+  const ctx = document.createElement("canvas").getContext("2d");
+
+  ctx.font = `${fontSize}px sans serif`;
+  const textMetrics = ctx.measureText(text); // pixels, dependent on fSz
+  console.log("all text metrics: ", textMetrics);
+  console.log("computed text width: ", textMetrics.width);
+
+  ctx.canvas.width = textMetrics.width;
+  // ctx.canvas.height = fontSize * 1.2; // padding
+  ctx.canvas.height =
+    (textMetrics.fontBoundingBoxAscent - textMetrics.fontBoundingBoxDescent) *
+    1.1;
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0)";
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  ctx.fillStyle = "#59544b"; // text color
+  ctx.textAlign = "left";
+  // ctx.textBaseline = "top";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    text,
+    ctx.canvas.width / 2 - textMetrics.width / 4,
+    ctx.canvas.height / 2
+  ); // position text in middle of canvas
+
+  const t = new THREE.Texture(ctx.canvas);
+  t.needsUpdate = true; // Ensure the texture is updated
+
+  const sMat = new THREE.SpriteMaterial({ map: t, transparent: true });
+  const s = new THREE.Sprite(sMat);
+  const scl = 10;
+  s.scale.set(ctx.canvas.width / scl, ctx.canvas.height / scl, 1);
+
+  return {
+    sprite: s,
+    length: ctx.canvas.width / scl,
+  };
+}
+
+function createDebugSprite() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "red";
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.fillStyle = "blue";
+  ctx.font = "24px Arial";
+  ctx.fillText("Test Sprite", 50, 128);
+
+  const texture = new THREE.Texture(canvas);
+  texture.needsUpdate = true;
+
+  const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+  const sprite = new THREE.Sprite(spriteMaterial);
+  sprite.position.set(0, 0, 0); // Adjust position to ensure visibility
+  sprite.scale.set(2, 2, 1); // Adjust scale as necessary
+  scene.add(sprite);
+}
+
 function getTextureAndWidth(text) {
   if (!text) return null;
 
   const ctx = document.createElement("canvas").getContext("2d");
-  document.body.appendChild(ctx.canvas); // Temporarily add to body to see the result
+  // document.body.appendChild(ctx.canvas); // Temporarily add to body to see the result
 
   const font = `${fSz}px sans serif`;
   ctx.font = font;
@@ -899,7 +1010,7 @@ function createRigidBody(threeObject, physicsShape, mass, pos, eu) {
   physicsWorld.addRigidBody(body);
 }
 
-function clearBodies() {
+function removeBodies() {
   const ww = window.innerWidth / 2;
   const wh = window.innerHeight / 2;
 
@@ -910,7 +1021,7 @@ function clearBodies() {
 
     // not the most precise method, since ww wh are 2D and also do not factor in camera angle. but it'll do for now
     if (pos.x < -ww || pos.x > ww || pos.y < -wh || pos.y > wh) {
-      console.log("removed capsule and text object at ", pos);
+      // console.log("removed capsule and text object at ", pos);
 
       scene.remove(capsule); // remove body from scene
       physicsWorld.removeRigidBody(capsule.userData.physicsBody); // remove physics body from simulation
@@ -966,21 +1077,43 @@ async function createWind() {
     isDone = true;
     console.log("you've forgotten everything");
     // console.log("influence: ", influence);
-    // influence = 0; // this doesn't work
+    influence = 0; // this doesn't work
     return;
   }
 
-  const index = Math.floor(Math.random() * forgottens.length);
-  console.log("this forgotten", forgottens[index].forgotten);
+  // const index = Math.floor(Math.random() * forgottens.length);
+  const index = getWeightedRandIndex();
+  triedToRemembers.push(index);
+  console.log(`${forgottens[index].type}`);
+
   // const { obj: textObject, width: textW } = await createTextElAsync(
   //   forgottens[index].forgotten,
   //   startingPos
   // );
-  let d = getTextureAndWidth(forgottens[index].forgotten);
-  capsule = createCapsule(d.length, startingPos, d.texture);
+  let sprite = createSpriteText(forgottens[index].forgotten);
+  sprite.position.copy(startingPos);
+  scene.add(sprite);
+  capsule = createCapsulewithSprite(12, startingPos);
+  textObjects.push(sprite);
+
+  // let d = createSpriteText(forgottens[index].forgotten);
+  // scene.add(d.sprite);
+  // d.sprite.position.copy(startingPos);
+  // capsule = createCapsulewithSprite(d.length, startingPos);
   // scene.add(textObject);
+  // textObjects.push(d.sprite);
   // textObjects.push(textObject);
-  triedToRemembers.push(index);
+
+  // console.log("startingPos: ", startingPos);
+  // console.log("textObjects: ", textObjects);
+
+  // for (let i = 0; i < textObjects.length; i++) {
+  //   console.log(
+  //     `textObjects[${i}] position: ${JSON.stringify(textObjects[i].position)}`
+  //   );
+  // }
+
+  // scene.add(createSpriteText(forgottens[index].forgotten));
 
   capsuleBody = capsule.userData.physicsBody;
   capsuleBody.setLinearVelocity(windVelocity); // comment this back in!
@@ -988,4 +1121,28 @@ async function createWind() {
   // setTimeout(() => {
   //   capsuleBody.setLinearVelocity(windVelocity); // comment this back in!
   // }, 1000);
+}
+
+function getWeightedRandIndex() {
+  const weights = {
+    factual: 3,
+    logistical: 3,
+    sentimental: 1,
+    ancestral: 1,
+  };
+
+  let weightedIndices = [];
+
+  forgottens.forEach((item, index) => {
+    if (!triedToRemembers.includes(index)) {
+      const weight = weights[item.type];
+      for (let i = 0; i < weight; i++) {
+        weightedIndices.push(index);
+      }
+    }
+  });
+
+  // console.log("weightedIndices: ", weightedIndices);
+  const randIndex = Math.floor(Math.random() * weightedIndices.length);
+  return weightedIndices[randIndex];
 }
