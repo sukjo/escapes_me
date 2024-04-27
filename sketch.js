@@ -3,6 +3,7 @@
 // https://stackoverflow.com/questions/45947570/how-to-attach-an-event-listener-to-the-dom-depending-upon-the-screen-size
 
 import * as THREE from "three";
+
 import SpriteText from "three-spritetext";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GUI } from "three/addons/libs/lil-gui.module.min.js";
@@ -12,23 +13,15 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { AfterimagePass } from "three/addons/postprocessing/AfterimagePass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import {
-  CSS3DRenderer,
-  CSS3DObject,
-} from "three/addons/renderers/CSS3DRenderer.js";
 import forgottens from "./forgottens.json" assert { type: "json" };
 
-let scene, clock, camera;
+let scene, clock, controls, camera;
 let directionalLight, ambientLight;
 let axesHelper, gridHelper, dLightHelper, dLightShadowHelper;
-let webglrenderer, css3drenderer, composer, afterimagePass;
+let webglrenderer, composer, afterimagePass;
 
 let isDone = false;
 let triedToRemembers = [];
-let triedSentimentals = [];
-let triedAncestrals = [];
-let triedFactuals = [];
-let triedLogisticals = [];
 let influence;
 
 let physicsWorld;
@@ -38,15 +31,24 @@ let transformAux;
 const rigidBodies = [];
 
 let cloth;
-const clothWidth = 10; // orig 8
-const clothHeight = 12; // orig 10
+const sc = 3;
+const clothWidth = 10 * sc; // orig 10
+const clothHeight = 12 * sc; // orig 12
+const clothSegmentsFactor = 3;
 const clothPos = new THREE.Vector3(-3, 4, 2); // bottom right corner? ... orig y: 0
 const pylonHeight = clothPos.y + clothHeight * 1.2; // orig * 1.0
 const pylonWidth = 0.4;
 const frameTopLength = 1 + clothWidth;
 
-const textSize = 0.33;
+let cameraScale = 28; // 70
+let cameraVOffset = clothHeight - clothPos.y * sc - 4;
+let cameraHOffset = clothPos.x - 10;
+let cameraNear = -100;
+let cameraFar = 100;
+
 let capsule, capsuleBody, windVelocity;
+let textHeight = 0.01;
+let fontSize = 150;
 let textObjects = [];
 
 const afterimageParams = {
@@ -72,9 +74,7 @@ function init() {
   // initGui();
   initPhysics();
   initObjects();
-  initInput();
-  initCameraMovement();
-  initForgottens();
+  initEventListeners();
 }
 
 /* -------------------------------------------------------------------------- */
@@ -97,8 +97,6 @@ function initScene() {
     scene.position.z - 3 + pylonWidth
   );
 
-  // createDebugSprite();
-
   axesHelper = getAxesHelper(10);
   // scene.add(axesHelper);
   gridHelper = getGridHelper(100);
@@ -108,15 +106,13 @@ function initScene() {
   dLightShadowHelper = getDLightShadowHelper();
   // scene.add(dLightShadowHelper);
 
-  const scale = 30;
-  const vertOffset = 3; // orig 3
   camera = new THREE.OrthographicCamera(
-    -window.innerWidth / scale,
-    window.innerWidth / scale,
-    window.innerHeight / scale + vertOffset,
-    -window.innerHeight / scale + vertOffset,
-    -1000,
-    1000
+    -window.innerWidth / cameraScale + cameraHOffset,
+    window.innerWidth / cameraScale + cameraHOffset,
+    window.innerHeight / cameraScale + cameraVOffset,
+    -window.innerHeight / cameraScale + cameraVOffset,
+    cameraNear,
+    cameraFar
   );
 
   scene.add(camera);
@@ -140,17 +136,16 @@ function initScene() {
   // const outputPass = new OutputPass();
   // composer.addPass(outputPass);
 
-  // const controls = new OrbitControls(camera, css3drenderer.domElement); // swap this for webglrenderer?
-  const controls = new OrbitControls(camera, webglrenderer.domElement);
-  controls.enabled = true;
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.1;
-  controls.update();
+  controls = new OrbitControls(camera, webglrenderer.domElement);
+  // controls.dampingFactor = 0.5;
   // controls.addEventListener("change", function () {
   //   console.log("Camera position: ", camera.position);
   // });
 
-  window.addEventListener("resize", onWindowResize);
+  window.addEventListener("resize", () => {
+    onWindowResize();
+    updateEventListeners();
+  });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -162,16 +157,87 @@ function initGui() {
 
   var options = {
     gravity: -9.8,
+    cameraScale: cameraScale,
+    cameraVOffset: cameraVOffset,
+    cameraHOffset: cameraHOffset,
+    cameraNear: cameraNear,
+    cameraFar: cameraFar,
+    textHeight: textHeight,
+    fontSize: fontSize,
   };
 
-  const gravityFolder = gui.addFolder("gravity");
-  gravityFolder.add(options, "gravity", -10, 20).onChange((val) => {
-    gravityConstant = val;
-    updateGravity();
+  const camera_427 = gui.addFolder("orthographic camera");
+  camera_427.add(options, "cameraScale", -100, 100).onChange((val) => {
+    cameraScale = val;
+    updateCameraScaleGUI();
   });
+  camera_427.add(options, "cameraVOffset", -100, 100).onChange((val) => {
+    cameraVOffset = val;
+    updatecameraVOffsetGUI();
+  });
+  camera_427.add(options, "cameraHOffset", -100, 100).onChange((val) => {
+    cameraHOffset = val;
+    updatecameraHOffsetGUI();
+  });
+  camera_427.add(options, "cameraNear", -2000, 100).onChange((val) => {
+    cameraNear = val;
+    updateCameraNear();
+  }); // The valid range is between 0 and the current value of the far plane. Note that, unlike for the PerspectiveCamera, 0 is a valid value for an OrthographicCamera's near plane.
+
+  camera_427.add(options, "cameraFar", 0, 2000).onChange((val) => {
+    cameraFar = val;
+    updateCameraFar();
+  }); // Camera frustum far plane. Default is 2000.
+
+  const text_427 = gui.addFolder("text sprite");
+  text_427.add(options, "textHeight", 0, 0.1).onChange((val) => {
+    textHeight = val;
+  });
+  text_427.add(options, "fontSize", 0, 200).onChange((val) => {
+    fontSize = val;
+  });
+
+  // const gravityFolder = gui.addFolder("gravity");
+  // gravityFolder.add(options, "gravity", -10, 20).onChange((val) => {
+  //   gravityConstant = val;
+  //   updateGravityGUI();
+  // });
 }
 
-function updateGravity() {
+function updateCameraScaleGUI() {
+  camera.left = -window.innerWidth / cameraScale + cameraHOffset;
+  camera.right = window.innerWidth / cameraScale + cameraHOffset;
+  camera.top = window.innerHeight / cameraScale + cameraVOffset;
+  camera.bottom = -window.innerHeight / cameraScale + cameraVOffset;
+  camera.updateProjectionMatrix();
+  console.log("camera scale: ", cameraScale);
+}
+
+function updatecameraVOffsetGUI() {
+  camera.top = window.innerHeight / cameraScale + cameraVOffset;
+  camera.bottom = -window.innerHeight / cameraScale + cameraVOffset;
+  camera.updateProjectionMatrix();
+  console.log("camera vert offset: ", cameraVOffset);
+}
+
+function updatecameraHOffsetGUI() {
+  camera.left = -window.innerWidth / cameraScale + cameraHOffset;
+  camera.right = window.innerWidth / cameraScale + cameraHOffset;
+  camera.updateProjectionMatrix();
+  console.log("camera horiz offset: ", cameraHOffset);
+}
+
+function updateCameraNear() {
+  camera.near = cameraNear;
+  camera.updateProjectionMatrix();
+}
+
+function updateCameraFar() {
+  camera.far = cameraFar;
+  camera.updateProjectionMatrix();
+}
+
+function updateGravityGUI() {
   physicsWorld.setGravity(new Ammo.btVector3(0, gravityConstant, 0));
   // btVector3 represents the gravity vector, which is set to affect the y-axis with a magnitude defined by gravityConstant
   physicsWorld
@@ -189,13 +255,8 @@ function initRenderers() {
   webglrenderer.setPixelRatio(window.devicePixelRatio);
   webglrenderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(webglrenderer.domElement);
+  webglrenderer.domElement.id = "stage";
   webglrenderer.setClearColor(0xeeeef6, 1);
-
-  // css3drenderer = new CSS3DRenderer();
-  // css3drenderer.setSize(window.innerWidth, window.innerHeight);
-  // css3drenderer.domElement.style.position = "absolute";
-  // css3drenderer.domElement.style.top = 0;
-  // document.body.appendChild(css3drenderer.domElement);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -239,15 +300,12 @@ function initPhysics() {
 
 function initObjects() {
   const pos = new THREE.Vector3();
-  // const quat = new THREE.Quaternion(); // orig!
   const quat = new THREE.Euler();
 
   /* -------------------------- cloth graphic object -------------------------- */
 
-  const clothNumSegmentsZ = clothWidth * 6; // more segments = more wrinkling
-  const clothNumSegmentsY = clothHeight * 6;
-
-  // const clothPos = new THREE.Vector3(-3, 3, 2);
+  const clothNumSegmentsZ = clothWidth * clothSegmentsFactor; // more segments = more wrinkling
+  const clothNumSegmentsY = clothHeight * clothSegmentsFactor;
 
   const clothGeometry = new THREE.PlaneGeometry(
     clothWidth,
@@ -262,15 +320,13 @@ function initObjects() {
     clothPos.z - clothWidth * 0.5
   );
 
-  // console.log(clothGeometry.attributes.position); // why does this produce float32array?
-
   const clothMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     side: THREE.DoubleSide,
   });
   cloth = new THREE.Mesh(clothGeometry, clothMaterial);
-  cloth.castShadow = true;
-  cloth.receiveShadow = true;
+  // cloth.castShadow = true;
+  // cloth.receiveShadow = true;
   scene.add(cloth);
 
   /* --------------------------- cloth physics object -------------------------- */
@@ -324,13 +380,14 @@ function initObjects() {
   // Disable deactivation
   clothSoftBody.setActivationState(4);
 
-  /* --------------------------------- window --------------------------------- */
+  /* ---------------------------------- frame --------------------------------- */
 
   const frameMass = 1;
   const baseMaterial = new THREE.MeshBasicMaterial({
     color: new THREE.Color("rgb(0, 0, 0)"),
     transparent: true,
     opacity: 0.001,
+    visible: false,
   });
 
   pos.set(clothPos.x, 0.5 * pylonHeight, clothPos.z - frameTopLength);
@@ -379,7 +436,7 @@ function initObjects() {
 
   /* ------------------------------- constraints ------------------------------ */
   // Glue frame together
-  // FoR = frame of referencee
+  // FoR = frame of reference
   const FoR_top_left = new Ammo.btTransform();
   FoR_top_left.setIdentity();
   FoR_top_left.setOrigin(new Ammo.btVector3(0, 0, -frameTopLength / 2));
@@ -477,29 +534,6 @@ function initObjects() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                                 forgottens                                 */
-/* -------------------------------------------------------------------------- */
-
-function initForgottens() {
-  forgottens.forEach((forgotten, i) => {
-    if (forgotten.type === "factual") {
-      triedFactuals.push(i);
-    } else if (forgotten.type === "ancestral") {
-      triedAncestrals.push(i);
-    } else if (forgotten.type === "logistical") {
-      triedLogisticals.push(i);
-    } else if (forgotten.type === "sentimental") {
-      triedSentimentals.push(i);
-    }
-  });
-
-  // console.log("triedAncestrals: ", triedAncestrals);
-  // console.log("triedFactuals: ", triedFactuals);
-  // console.log("triedSentimentals: ", triedSentimentals);
-  // console.log("triedLogisticals: ", triedLogisticals);
-}
-
-/* -------------------------------------------------------------------------- */
 /*                               render + resize                              */
 /* -------------------------------------------------------------------------- */
 
@@ -507,14 +541,16 @@ function render() {
   const deltaTime = clock.getDelta();
   updatePhysics(deltaTime);
   webglrenderer.render(scene, camera);
-  // css3drenderer.render(scene, camera);
 }
 
 function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  // camera.aspect = window.innerWidth / window.innerHeight;
+  camera.left = -window.innerWidth / cameraScale + cameraHOffset;
+  camera.right = window.innerWidth / cameraScale + cameraHOffset;
+  camera.top = window.innerHeight / cameraScale + cameraVOffset;
+  camera.bottom = -window.innerHeight / cameraScale + cameraVOffset;
   camera.updateProjectionMatrix();
   webglrenderer.setSize(window.innerWidth, window.innerHeight);
-  // css3drenderer.setSize(window.innerWidth, window.innerHeight);
   render();
 }
 
@@ -524,6 +560,7 @@ function onWindowResize() {
 
 function update(renderer, scene, camera, clock) {
   window.requestAnimationFrame(update);
+  // controls.update();
   render();
   // afterimagePass.enabled = afterimageParams.enable;
   // composer.render();
@@ -570,12 +607,6 @@ function updatePhysics(deltaTime) {
 
   setInterval(removeBodies, 1000);
   updateTextPositions();
-
-  // if (wind) {
-  //   console.log("wind happening");
-  //   windBody.activate();
-  //   windBody.applyCentralForce(windVelocity); // this doesnt do anything :')
-  // }
 }
 
 function updateTextPositions() {
@@ -681,44 +712,19 @@ function getAmbientLight(intensity) {
   // ambient light does not cast shadows
   return light;
 }
+
 /* -------------------------------------------------------------------------- */
-/*                               camera movement                              */
+/*                                camera scale                                */
 /* -------------------------------------------------------------------------- */
 
-function initCameraMovement() {
-  document.addEventListener("DOMContentLoaded", (ev) => {
-    gsap.registerPlugin(MotionPathPlugin);
-    const keyframes = [
-      new THREE.Vector3(6, 4, 2),
-      new THREE.Vector3(0, 2, -2),
-      // { x: 6, y: 4, z: 2 },
-      // { x: 0, y: 2, z: -2 },
-      // cameraStartingPos,
-    ];
-    // const keyframes = [
-    //   { x: 6, y: 4, z: 2 },
-    //   { x: 0, y: 2, z: -2 },
-    //   // cameraStartingPos,
-    // ];
-    const TL = gsap.timeline();
-
-    TL.from(camera.position, {
-      motionPath: {
-        path: keyframes,
-        align: keyframes,
-        alignOrigin: [0.5, 0.5], // sets the origin at the center of the obj
-        autoRotate: true,
-        // type: "cubic",
-      },
-      duration: 2,
-      ease: "power4.out",
-      onUpdate: () => {
-        camera.lookAt(0, 0, 0); // don't think this works
-      },
-    });
-
-    TL.kill();
-  });
+function updateCameraScale() {
+  if (window.innerWidth <= 700) {
+    cameraScale = 100;
+  } else {
+    cameraScale = 100;
+  }
+  camera.updateProjectionMatrix();
+  console.log("camera scale: ", cameraScale);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -740,63 +746,16 @@ function createParallelepiped(sx, sy, sz, mass, pos, eu, material) {
   return threeObject;
 }
 
-// function createSphere(sr, mass, pos, eu, material) {
-//   const threeObject = new THREE.Mesh(
-//     new THREE.SphereGeometry(sr, 16, 32),
-//     material
-//   );
-//   const shape = new Ammo.btSphereShape(sr); // does radius need to be divided by 2?
-//   shape.setMargin(margin);
-
-//   createRigidBody(threeObject, shape, mass, pos, eu);
-
-//   return threeObject;
-// }
-
-const fSz = 1;
-
-function createCapsulewithSprite(length, pos) {
-  const radius = fSz;
+function createCapsule(length, pos) {
+  const radius = 1;
   // const radius = textSize;
   const threeObject = new THREE.Mesh(
     new THREE.CapsuleGeometry(radius, length, 32, 32),
     new THREE.MeshBasicMaterial({
-      color: "rgb(0, 0, 0)",
-      transparent: true,
-      opacity: 0.001,
-    })
-  );
-
-  threeObject.rotateZ(-Math.PI / 2);
-  const directionToCamera = new THREE.Vector3().subVectors(
-    cameraStartingPos,
-    threeObject.position
-  ); // calculate direction by taking the difference of 2 vectors
-
-  // threeObject.lookAt(cameraStartingPos);
-  const angle = Math.atan2(directionToCamera.x, directionToCamera.z);
-  threeObject.rotateY(angle);
-
-  const eu = new THREE.Euler().setFromQuaternion(threeObject.quaternion);
-
-  const shape = new Ammo.btCapsuleShape(radius, length);
-  shape.setMargin(margin);
-
-  createRigidBody(threeObject, shape, 2, pos, eu);
-
-  return threeObject;
-}
-
-function createCapsulwithCanvas(length, pos, canvasTexture) {
-  const radius = fSz;
-  // const radius = textSize;
-  const threeObject = new THREE.Mesh(
-    new THREE.CapsuleGeometry(radius, length, 32, 32),
-    new THREE.MeshBasicMaterial({
-      color: 0xfdfd00,
-      transparent: false,
-      opacity: 1,
-      map: canvasTexture,
+      // color: "rgb(0, 0, 0)",
+      // transparent: true,
+      // opacity: 0.5,
+      visible: false,
     })
   );
 
@@ -823,149 +782,13 @@ function createCapsulwithCanvas(length, pos, canvasTexture) {
 function createSpriteText(text) {
   const sT = new SpriteText(text);
   sT.color = "black";
-  sT.fontFace = "serif";
-  sT.textHeight = 0.01;
-  sT.fontSize = 80;
+  sT.fontFace = "Times";
+  sT.textHeight = textHeight;
+  sT.fontSize = fontSize;
   sT.strokeWidth = 0;
   sT.backgroundColor = "rgba(0, 0, 0, 0)";
   sT.padding = 1;
   return sT;
-}
-
-function createSprite(text) {
-  const fontSize = 18;
-  const ctx = document.createElement("canvas").getContext("2d");
-
-  ctx.font = `${fontSize}px sans serif`;
-  const textMetrics = ctx.measureText(text); // pixels, dependent on fSz
-  console.log("all text metrics: ", textMetrics);
-  console.log("computed text width: ", textMetrics.width);
-
-  ctx.canvas.width = textMetrics.width;
-  // ctx.canvas.height = fontSize * 1.2; // padding
-  ctx.canvas.height =
-    (textMetrics.fontBoundingBoxAscent - textMetrics.fontBoundingBoxDescent) *
-    1.1;
-
-  ctx.fillStyle = "rgba(0, 0, 0, 0)";
-  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-  ctx.fillStyle = "#59544b"; // text color
-  ctx.textAlign = "left";
-  // ctx.textBaseline = "top";
-  ctx.textBaseline = "middle";
-  ctx.fillText(
-    text,
-    ctx.canvas.width / 2 - textMetrics.width / 4,
-    ctx.canvas.height / 2
-  ); // position text in middle of canvas
-
-  const t = new THREE.Texture(ctx.canvas);
-  t.needsUpdate = true; // Ensure the texture is updated
-
-  const sMat = new THREE.SpriteMaterial({ map: t, transparent: true });
-  const s = new THREE.Sprite(sMat);
-  const scl = 10;
-  s.scale.set(ctx.canvas.width / scl, ctx.canvas.height / scl, 1);
-
-  return {
-    sprite: s,
-    length: ctx.canvas.width / scl,
-  };
-}
-
-function createDebugSprite() {
-  const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 256;
-  const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "red";
-  ctx.fillRect(0, 0, 256, 256);
-  ctx.fillStyle = "blue";
-  ctx.font = "24px Arial";
-  ctx.fillText("Test Sprite", 50, 128);
-
-  const texture = new THREE.Texture(canvas);
-  texture.needsUpdate = true;
-
-  const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
-  const sprite = new THREE.Sprite(spriteMaterial);
-  sprite.position.set(0, 0, 0); // Adjust position to ensure visibility
-  sprite.scale.set(2, 2, 1); // Adjust scale as necessary
-  scene.add(sprite);
-}
-
-function getTextureAndWidth(text) {
-  if (!text) return null;
-
-  const ctx = document.createElement("canvas").getContext("2d");
-  // document.body.appendChild(ctx.canvas); // Temporarily add to body to see the result
-
-  const font = `${fSz}px sans serif`;
-  ctx.font = font;
-  const textMetrics = ctx.measureText(text); // pixels, dependent on fSz
-  console.log("measure text", textMetrics);
-  if (textMetrics.width === 0) return null; // Handle zero width
-
-  const w = fSz;
-  const h = textMetrics.width + fSz;
-
-  ctx.canvas.width = w;
-  ctx.canvas.height = h;
-
-  ctx.fillStyle = "rgba(255, 255, 255, 0.01)";
-  ctx.fillRect(0, 0, w, h);
-
-  ctx.font = font;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  ctx.textBaseline = "middle";
-
-  ctx.translate(fSz / 2, h - fSz / 2); // Adjust starting point for text rotation
-  ctx.rotate(-Math.PI / 2); // Rotate the canvas to draw vertical text
-
-  ctx.fillStyle = "rgba(55, 55, 255)"; // text color
-  ctx.fillText(text, 0, 0);
-  console.log("canvas :::: ", ctx.canvas);
-  // ctx.save();
-
-  const t = new THREE.CanvasTexture(ctx.canvas);
-  t.wrapS = THREE.ClampToEdgeWrapping;
-  t.wrapT = THREE.ClampToEdgeWrapping;
-  t.repeat.set(1, 1);
-  t.offset.set(0, 0);
-  // t.offset.set(1 - textMetrics.width / w, 0);
-
-  t.generateMipmaps = false; // Disable mipmaps
-  t.needsUpdate = true; // Ensure the texture is updated
-
-  return {
-    texture: t,
-    length: h - fSz,
-  };
-}
-
-function createTextElAsync(text, pos) {
-  return new Promise((resolve, reject) => {
-    const el = document.createElement("div");
-    el.className = `css3d-text`;
-    el.textContent = text;
-
-    const obj = new CSS3DObject(el);
-    obj.position.copy(pos);
-
-    // Append the element to the document body
-    document.body.appendChild(obj.element);
-    // obj.lookAt(cameraStartingPos);
-
-    // Wait for the next frame update using requestAnimationFrame
-    requestAnimationFrame(() => {
-      const computedStyle = window.getComputedStyle(obj.element);
-      const width = parseFloat(computedStyle.width);
-      const height = parseFloat(computedStyle.height);
-      resolve({ obj, width, height });
-    });
-  });
 }
 
 function createRigidBody(threeObject, physicsShape, mass, pos, eu) {
@@ -1038,27 +861,56 @@ function removeBodies() {
 /*                                 interaction                                */
 /* -------------------------------------------------------------------------- */
 
-function initInput() {
-  let widthMatch = window.matchMedia("(max-width: 700px)");
-
-  if (widthMatch.matches) {
+function initEventListeners() {
+  if ("ontouchstart" in window) {
     window.addEventListener("touchstart", createWind);
+    console.log("tracking touch events");
   } else {
     window.addEventListener("click", createWind);
+    console.log("tracking click events");
   }
-
-  widthMatch.addEventListener("change", function (mm) {
-    if (mm.matches) {
-      window.removeEventListener("click", createWind);
-      window.addEventListener("touchstart", createWind);
-      console.log("tracking touch events");
-    } else {
-      window.removeEventListener("touchstart", createWind);
-      window.addEventListener("click", createWind);
-      console.log("tracking click events");
-    }
-  });
 }
+
+function removeEventListeners() {
+  window.removeEventListener("touchstart", createWind);
+  window.removeEventListener("click", createWind);
+}
+
+function updateEventListeners() {
+  if (window.innerWidth <= 700) {
+    removeEventListeners();
+    // initEventListeners();
+    window.addEventListener("touchstart", createWind);
+    console.log("tracking touch events");
+  } else {
+    removeEventListeners();
+    // initEventListeners();
+    window.addEventListener("click", createWind);
+    console.log("tracking click events");
+  }
+}
+
+// function initEventListeners() {
+//   let widthMatch = window.matchMedia("(max-width: 700px)");
+
+//   if (widthMatch.matches) {
+//     window.addEventListener("touchstart", createWind);
+//   } else {
+//     window.addEventListener("click", createWind);
+//   }
+
+//   widthMatch.addEventListener("change", function (mm) {
+//     if (mm.matches) {
+//       window.removeEventListener("click", createWind);
+//       window.addEventListener("touchstart", createWind);
+//       console.log("tracking touch events");
+//     } else {
+//       window.removeEventListener("touchstart", createWind);
+//       window.addEventListener("click", createWind);
+//       console.log("tracking click events");
+//     }
+//   });
+// }
 
 async function createWind() {
   const startingPos = new THREE.Vector3(
@@ -1076,44 +928,21 @@ async function createWind() {
   if (triedToRemembers.length === forgottens.length) {
     isDone = true;
     console.log("you've forgotten everything");
-    // console.log("influence: ", influence);
     influence = 0; // this doesn't work
     return;
   }
 
-  // const index = Math.floor(Math.random() * forgottens.length);
   const index = getWeightedRandIndex();
   triedToRemembers.push(index);
-  console.log(`${forgottens[index].type}`);
 
-  // const { obj: textObject, width: textW } = await createTextElAsync(
-  //   forgottens[index].forgotten,
-  //   startingPos
-  // );
   let sprite = createSpriteText(forgottens[index].forgotten);
   sprite.position.copy(startingPos);
   scene.add(sprite);
-  capsule = createCapsulewithSprite(12, startingPos);
+  capsule = createCapsule(
+    getApproxTextWidth(forgottens[index].forgotten),
+    startingPos
+  );
   textObjects.push(sprite);
-
-  // let d = createSpriteText(forgottens[index].forgotten);
-  // scene.add(d.sprite);
-  // d.sprite.position.copy(startingPos);
-  // capsule = createCapsulewithSprite(d.length, startingPos);
-  // scene.add(textObject);
-  // textObjects.push(d.sprite);
-  // textObjects.push(textObject);
-
-  // console.log("startingPos: ", startingPos);
-  // console.log("textObjects: ", textObjects);
-
-  // for (let i = 0; i < textObjects.length; i++) {
-  //   console.log(
-  //     `textObjects[${i}] position: ${JSON.stringify(textObjects[i].position)}`
-  //   );
-  // }
-
-  // scene.add(createSpriteText(forgottens[index].forgotten));
 
   capsuleBody = capsule.userData.physicsBody;
   capsuleBody.setLinearVelocity(windVelocity); // comment this back in!
@@ -1142,7 +971,12 @@ function getWeightedRandIndex() {
     }
   });
 
-  // console.log("weightedIndices: ", weightedIndices);
   const randIndex = Math.floor(Math.random() * weightedIndices.length);
   return weightedIndices[randIndex];
+}
+
+function getApproxTextWidth(text) {
+  const approxCharWidth = textHeight * 70; // hand-refined
+  const textWidth = text.length * approxCharWidth;
+  return textWidth;
 }
