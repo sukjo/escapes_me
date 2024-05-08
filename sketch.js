@@ -1,35 +1,20 @@
-// https://github.com/mrdoob/three.js/blob/master/examples/physics_ammo_cloth.html#L423
-// https://medium.com/@bluemagnificent/intro-to-javascript-3d-physics-using-ammo-js-and-three-js-dd48df81f591
-// https://stackoverflow.com/questions/45947570/how-to-attach-an-event-listener-to-the-dom-depending-upon-the-screen-size
-
 import * as THREE from "three";
-
 import SpriteText from "three-spritetext";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { GUI } from "three/addons/libs/lil-gui.module.min.js";
-// import { gsap } from "gsap";
-import { RectAreaLightHelper } from "three/addons/helpers/RectAreaLightHelper.js";
-import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { AfterimagePass } from "three/addons/postprocessing/AfterimagePass.js";
-import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import forgottens from "./forgottens.json" assert { type: "json" };
+import forgottens from "./forgottens.json" with { type: "json" };
 
 let scene, clock, controls, camera;
-let directionalLight, ambientLight;
-let axesHelper, gridHelper, dLightHelper, dLightShadowHelper;
-let webglrenderer, composer, afterimagePass;
-
-let isDone = false;
+let directionalLight;
+let webglrenderer;
 let triedToRemembers = [];
+let clothMaterial;
 let influence;
-
+let startTime = null;
 let physicsWorld;
 let gravityConstant = -5; // -9.8
 const margin = 0.05;
 let transformAux;
-const rigidBodies = [];
-
+let rigidBodies = [];
 let cloth;
 const sc = 3;
 const clothWidth = 10 * sc; // orig 10
@@ -40,7 +25,7 @@ const pylonHeight = clothPos.y + clothHeight * 1.2; // orig * 1.0
 const pylonWidth = 0.4;
 const frameTopLength = 1 + clothWidth;
 
-let cameraScale = 28; // 70
+let cameraScale; // 70
 let cameraVOffset = clothHeight - clothPos.y * sc - 4;
 let cameraHOffset = clothPos.x - 10;
 let cameraNear = -100;
@@ -51,12 +36,7 @@ let textHeight = 0.01;
 let fontSize = 150;
 let textObjects = [];
 
-const afterimageParams = {
-  enable: true,
-};
-
 const cameraStartingPos = new THREE.Vector3(-6.7, 9.3, 10);
-// const cameraStartingPos = new THREE.Vector3(-10, 12, 8.7);
 
 /* -------------------------------------------------------------------------- */
 /*                                    ammo                                    */
@@ -71,7 +51,6 @@ Ammo().then(function (AmmoLib) {
 
 function init() {
   initScene();
-  // initGui();
   initPhysics();
   initObjects();
   initEventListeners();
@@ -87,24 +66,11 @@ function initScene() {
 
   addLighting();
 
-  const testGeo = new THREE.SphereGeometry(1);
-  const testMat = new THREE.MeshBasicMaterial({ color: 0x000 });
-  const testMesh = new THREE.Mesh(testGeo, testMat);
-  // scene.add(testMesh);
-  testMesh.position.set(
-    scene.position.x - 3,
-    scene.position.y + clothHeight - pylonWidth,
-    scene.position.z - 3 + pylonWidth
-  );
-
-  axesHelper = getAxesHelper(10);
-  // scene.add(axesHelper);
-  gridHelper = getGridHelper(100);
-  // scene.add(gridHelper);
-  dLightHelper = getDLightHelper();
-  // scene.add(dLightHelper);
-  dLightShadowHelper = getDLightShadowHelper();
-  // scene.add(dLightShadowHelper);
+  if (window.innerWidth <= 700) {
+    cameraScale = 14;
+  } else {
+    cameraScale = 28;
+  }
 
   camera = new THREE.OrthographicCamera(
     -window.innerWidth / cameraScale + cameraHOffset,
@@ -117,30 +83,12 @@ function initScene() {
 
   scene.add(camera);
   camera.position.copy(cameraStartingPos);
-  // camera.position.set(-15, pylonHeight / 2 - pylonWidth * 6, -pylonWidth);
-  const sceneCenter = new THREE.Vector3(
-    scene.position.x - 3,
-    scene.position.y + clothHeight - pylonWidth,
-    scene.position.z - clothWidth / 2 + pylonWidth * 2
-  );
   camera.lookAt(scene);
-  // camera.lookAt(testMesh);
-  // console.log(testMesh.position);
 
   initRenderers();
 
-  // composer = new EffectComposer(webglrenderer);
-  // composer.addPass(new RenderPass(scene, camera));
-  // afterimagePass = new AfterimagePass(0.8); // damp visible range starts at ~0.6
-  // composer.addPass(afterimagePass);
-  // const outputPass = new OutputPass();
-  // composer.addPass(outputPass);
-
   controls = new OrbitControls(camera, webglrenderer.domElement);
-  // controls.dampingFactor = 0.5;
-  // controls.addEventListener("change", function () {
-  //   console.log("Camera position: ", camera.position);
-  // });
+  // controls.enabled = false;
 
   window.addEventListener("resize", () => {
     onWindowResize();
@@ -148,103 +96,6 @@ function initScene() {
   });
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                     GUI                                    */
-/* -------------------------------------------------------------------------- */
-
-function initGui() {
-  let gui = new GUI();
-
-  var options = {
-    gravity: -9.8,
-    cameraScale: cameraScale,
-    cameraVOffset: cameraVOffset,
-    cameraHOffset: cameraHOffset,
-    cameraNear: cameraNear,
-    cameraFar: cameraFar,
-    textHeight: textHeight,
-    fontSize: fontSize,
-  };
-
-  const camera_427 = gui.addFolder("orthographic camera");
-  camera_427.add(options, "cameraScale", -100, 100).onChange((val) => {
-    cameraScale = val;
-    updateCameraScaleGUI();
-  });
-  camera_427.add(options, "cameraVOffset", -100, 100).onChange((val) => {
-    cameraVOffset = val;
-    updatecameraVOffsetGUI();
-  });
-  camera_427.add(options, "cameraHOffset", -100, 100).onChange((val) => {
-    cameraHOffset = val;
-    updatecameraHOffsetGUI();
-  });
-  camera_427.add(options, "cameraNear", -2000, 100).onChange((val) => {
-    cameraNear = val;
-    updateCameraNear();
-  }); // The valid range is between 0 and the current value of the far plane. Note that, unlike for the PerspectiveCamera, 0 is a valid value for an OrthographicCamera's near plane.
-
-  camera_427.add(options, "cameraFar", 0, 2000).onChange((val) => {
-    cameraFar = val;
-    updateCameraFar();
-  }); // Camera frustum far plane. Default is 2000.
-
-  const text_427 = gui.addFolder("text sprite");
-  text_427.add(options, "textHeight", 0, 0.1).onChange((val) => {
-    textHeight = val;
-  });
-  text_427.add(options, "fontSize", 0, 200).onChange((val) => {
-    fontSize = val;
-  });
-
-  // const gravityFolder = gui.addFolder("gravity");
-  // gravityFolder.add(options, "gravity", -10, 20).onChange((val) => {
-  //   gravityConstant = val;
-  //   updateGravityGUI();
-  // });
-}
-
-function updateCameraScaleGUI() {
-  camera.left = -window.innerWidth / cameraScale + cameraHOffset;
-  camera.right = window.innerWidth / cameraScale + cameraHOffset;
-  camera.top = window.innerHeight / cameraScale + cameraVOffset;
-  camera.bottom = -window.innerHeight / cameraScale + cameraVOffset;
-  camera.updateProjectionMatrix();
-  console.log("camera scale: ", cameraScale);
-}
-
-function updatecameraVOffsetGUI() {
-  camera.top = window.innerHeight / cameraScale + cameraVOffset;
-  camera.bottom = -window.innerHeight / cameraScale + cameraVOffset;
-  camera.updateProjectionMatrix();
-  console.log("camera vert offset: ", cameraVOffset);
-}
-
-function updatecameraHOffsetGUI() {
-  camera.left = -window.innerWidth / cameraScale + cameraHOffset;
-  camera.right = window.innerWidth / cameraScale + cameraHOffset;
-  camera.updateProjectionMatrix();
-  console.log("camera horiz offset: ", cameraHOffset);
-}
-
-function updateCameraNear() {
-  camera.near = cameraNear;
-  camera.updateProjectionMatrix();
-}
-
-function updateCameraFar() {
-  camera.far = cameraFar;
-  camera.updateProjectionMatrix();
-}
-
-function updateGravityGUI() {
-  physicsWorld.setGravity(new Ammo.btVector3(0, gravityConstant, 0));
-  // btVector3 represents the gravity vector, which is set to affect the y-axis with a magnitude defined by gravityConstant
-  physicsWorld
-    .getWorldInfo()
-    .set_m_gravity(new Ammo.btVector3(0, gravityConstant, 0));
-  // sets gravity by retrieving the world info object from physicsWorld and setting its gravity property to the same btVector3
-}
 
 /* -------------------------------------------------------------------------- */
 /*                                  renderers                                 */
@@ -266,15 +117,10 @@ function initRenderers() {
 function initPhysics() {
   const collisionConfiguration =
     new Ammo.btSoftBodyRigidBodyCollisionConfiguration();
-  // configuration object used for collision detection between soft bodies and rigid bodies
   const dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration);
-  // responsible for dispatching collision events between objects
   const broadphase = new Ammo.btDbvtBroadphase();
-  // a broad-phase collision detection algorithm used to efficiently narrow down potential collision pairs
   const solver = new Ammo.btSequentialImpulseConstraintSolver();
-  // a solver used to resolve constraints and simulate physics interactions
   const softBodySolver = new Ammo.btDefaultSoftBodySolver();
-  // a solver specifically designed for simulating soft bodies
   physicsWorld = new Ammo.btSoftRigidDynamicsWorld(
     dispatcher,
     broadphase,
@@ -282,16 +128,11 @@ function initPhysics() {
     collisionConfiguration,
     softBodySolver
   );
-  // a physics world where soft and rigid bodies interact
   physicsWorld.setGravity(new Ammo.btVector3(0, gravityConstant, 0));
-  // btVector3 represents the gravity vector, which is set to affect the y-axis with a magnitude defined by gravityConstant
   physicsWorld
     .getWorldInfo()
     .set_m_gravity(new Ammo.btVector3(0, gravityConstant, 0));
-  // sets gravity by retrieving the world info object from physicsWorld and setting its gravity property to the same btVector3
   transformAux = new Ammo.btTransform();
-  // new instance of btTransform represents a transformation in 3D space
-  // in other words, a temporary ammo.js transform object
 }
 
 /* -------------------------------------------------------------------------- */
@@ -320,13 +161,11 @@ function initObjects() {
     clothPos.z - clothWidth * 0.5
   );
 
-  const clothMaterial = new THREE.MeshStandardMaterial({
+  clothMaterial = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     side: THREE.DoubleSide,
   });
   cloth = new THREE.Mesh(clothGeometry, clothMaterial);
-  // cloth.castShadow = true;
-  // cloth.receiveShadow = true;
   scene.add(cloth);
 
   /* --------------------------- cloth physics object -------------------------- */
@@ -365,11 +204,8 @@ function initObjects() {
     true
   );
   const sbConfig = clothSoftBody.get_m_cfg();
-  sbConfig.set_viterations(10); // used to set the number of velocity iterations for the soft body simulation.
-  sbConfig.set_piterations(10); // used to set the number of position iterations for the soft body simulation.
-  // these lines of code adjust the accuracy and performance trade-offs of the soft body simulation.
-  // Higher values for both iterations can improve the accuracy of the simulation but may impact performance,
-  // while lower values can increase performance but might result in less accurate physics behavior
+  sbConfig.set_viterations(10); 
+  sbConfig.set_piterations(10); 
 
   clothSoftBody.setTotalMass(0.9, false);
   Ammo.castObject(clothSoftBody, Ammo.btCollisionObject)
@@ -435,8 +271,7 @@ function initObjects() {
   );
 
   /* ------------------------------- constraints ------------------------------ */
-  // Glue frame together
-  // FoR = frame of reference
+  
   const FoR_top_left = new Ammo.btTransform();
   FoR_top_left.setIdentity();
   FoR_top_left.setOrigin(new Ammo.btVector3(0, 0, -frameTopLength / 2));
@@ -512,9 +347,7 @@ function initObjects() {
   );
   physicsWorld.addConstraint(c4, false);
 
-  // Glue the cloth to frame
   influence = 1;
-  // By setting influence to a value between 0 and 1, you can control the stiffness or rigidity of the connections between the anchor and the soft body.
   // Higher values make the connection more rigid, while lower values allow for more flexibility and deformation.
   clothSoftBody.appendAnchor(
     0,
@@ -544,7 +377,6 @@ function render() {
 }
 
 function onWindowResize() {
-  // camera.aspect = window.innerWidth / window.innerHeight;
   camera.left = -window.innerWidth / cameraScale + cameraHOffset;
   camera.right = window.innerWidth / cameraScale + cameraHOffset;
   camera.top = window.innerHeight / cameraScale + cameraVOffset;
@@ -560,10 +392,7 @@ function onWindowResize() {
 
 function update(renderer, scene, camera, clock) {
   window.requestAnimationFrame(update);
-  // controls.update();
   render();
-  // afterimagePass.enabled = afterimageParams.enable;
-  // composer.render();
 }
 
 function updatePhysics(deltaTime) {
@@ -617,43 +446,13 @@ function updateTextPositions() {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/*                                   helpers                                  */
-/* -------------------------------------------------------------------------- */
-
-function getAxesHelper(size) {
-  var helper = new THREE.AxesHelper(size);
-  return helper;
-}
-
-function getGridHelper(size) {
-  var helper = new THREE.GridHelper(size, 60);
-  return helper;
-}
-
-function getDLightHelper() {
-  var helper = new THREE.DirectionalLightHelper(directionalLight);
-  return helper;
-}
-
-function getDLightShadowHelper() {
-  var helper = new THREE.CameraHelper(directionalLight.shadow.camera);
-  return helper;
-}
-
-function addStartingPosHelper() {
-  const geo = new THREE.BoxGeometry(-3, clothHeight, clothWidth);
-
-  const mat = new THREE.MeshBasicMaterial({ color: 0x000 });
-
-  const helper = new THREE.Mesh(geo, mat);
-
-  helper.position.set(
-    clothPos.x / 2 - 3,
-    clothPos.y + clothHeight / 2,
-    clothPos.z - clothWidth / 2 - pylonWidth
-  );
-  scene.add(helper);
+function updateCameraScale() {
+  camera.left = -window.innerWidth / cameraScale + cameraHOffset;
+  camera.right = window.innerWidth / cameraScale + cameraHOffset;
+  camera.top = window.innerHeight / cameraScale + cameraVOffset;
+  camera.bottom = -window.innerHeight / cameraScale + cameraVOffset;
+  camera.updateProjectionMatrix();
+  console.log("camera scale: ", cameraScale);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -663,68 +462,44 @@ function addStartingPosHelper() {
 function addLighting() {
   directionalLight = getDirectionalLight(1);
   directionalLight.position.set(-100, 100, 50);
-  // scene.add(directionalLight);
-  ambientLight = getAmbientLight(1);
-  // scene.add(ambientLight);
+  scene.add(directionalLight);
 
   const offset = 3;
   const rectX = -6;
+  const width = 100;
+  const length = 60;
+  const intensity = 1.5;
+
   const rectLight = new THREE.RectAreaLight(
     0x4e00ff,
-    1,
-    frameTopLength,
-    pylonHeight
+    intensity,
+    width,
+    length
   );
-  rectLight.position.set(rectX, pylonHeight, offset);
+  rectLight.position.set(rectX, pylonHeight * 2, offset);
   rectLight.rotation.set(0, -Math.PI / 2, 0);
-  rectLight.lookAt(clothPos);
+  rectLight.lookAt(clothPos.x, clothPos.y, clothPos.z - frameTopLength / 2);
   scene.add(rectLight);
-  // let rectLightHelper = new RectAreaLightHelper(rectLight);
-  // scene.add(rectLightHelper);
 
   const rectLight_1 = new THREE.RectAreaLight(
     0xc5edac,
-    1,
-    frameTopLength,
-    pylonHeight
+    intensity,
+    width,
+    length
   );
-  rectLight_1.position.set(rectX, pylonHeight, -offset);
+  rectLight_1.position.set(rectX, pylonHeight * 2, -length/2 - offset);
   rectLight_1.rotation.set(0, -Math.PI / 2, 0);
-  rectLight_1.lookAt(clothPos);
+  rectLight_1.lookAt(clothPos.x, clothPos.y, clothPos.z - frameTopLength / 2);
   scene.add(rectLight_1);
-  // let rectLightHelper_1 = new RectAreaLightHelper(rectLight_1);
-  // scene.add(rectLightHelper_1);
 }
 
 function getDirectionalLight(intensity) {
   var light = new THREE.DirectionalLight(0xffffff, intensity);
-  // directional light produces rays that are all parallel to each other
   light.castShadow = true;
   light.shadow.mapSize.width = 1024;
   light.shadow.camera.near = 1;
   light.shadow.camera.far = 500;
-  var scale = 1.75;
   return light;
-}
-
-function getAmbientLight(intensity) {
-  var light = new THREE.AmbientLight("rgb(10, 30, 50)", intensity);
-  // ambient light does not cast shadows
-  return light;
-}
-
-/* -------------------------------------------------------------------------- */
-/*                                camera scale                                */
-/* -------------------------------------------------------------------------- */
-
-function updateCameraScale() {
-  if (window.innerWidth <= 700) {
-    cameraScale = 100;
-  } else {
-    cameraScale = 100;
-  }
-  camera.updateProjectionMatrix();
-  console.log("camera scale: ", cameraScale);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -748,13 +523,9 @@ function createParallelepiped(sx, sy, sz, mass, pos, eu, material) {
 
 function createCapsule(length, pos) {
   const radius = 1;
-  // const radius = textSize;
   const threeObject = new THREE.Mesh(
     new THREE.CapsuleGeometry(radius, length, 32, 32),
     new THREE.MeshBasicMaterial({
-      // color: "rgb(0, 0, 0)",
-      // transparent: true,
-      // opacity: 0.5,
       visible: false,
     })
   );
@@ -765,7 +536,6 @@ function createCapsule(length, pos) {
     threeObject.position
   ); // calculate direction by taking the difference of 2 vectors
 
-  // threeObject.lookAt(cameraStartingPos);
   const angle = Math.atan2(directionToCamera.x, directionToCamera.z);
   threeObject.rotateY(angle);
 
@@ -793,15 +563,11 @@ function createSpriteText(text) {
 
 function createRigidBody(threeObject, physicsShape, mass, pos, eu) {
   threeObject.position.copy(pos);
-  // threeObject.quaternion.copy(quat);
-
-  // const position = new THREE.Vector3().copy(pos);
   const euler = new THREE.Quaternion().setFromEuler(eu);
 
   const transform = new Ammo.btTransform();
   transform.setIdentity();
   transform.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
-  // transform.setOrigin(new Ammo.btVector3(position.x, position.y, position.z));
   transform.setRotation(
     new Ammo.btQuaternion(euler.x, euler.y, euler.z, euler.w)
   );
@@ -844,15 +610,13 @@ function removeBodies() {
 
     // not the most precise method, since ww wh are 2D and also do not factor in camera angle. but it'll do for now
     if (pos.x < -ww || pos.x > ww || pos.y < -wh || pos.y > wh) {
-      // console.log("removed capsule and text object at ", pos);
-
-      scene.remove(capsule); // remove body from scene
-      physicsWorld.removeRigidBody(capsule.userData.physicsBody); // remove physics body from simulation
+      scene.remove(capsule); 
+      physicsWorld.removeRigidBody(capsule.userData.physicsBody); 
       scene.remove(textObj);
 
       rigidBodies.splice(i, 1);
       textObjects.splice(i, 1);
-      i--; // update counter to new array length
+      i--; 
     }
   }
 }
@@ -864,10 +628,8 @@ function removeBodies() {
 function initEventListeners() {
   if ("ontouchstart" in window) {
     window.addEventListener("touchstart", createWind);
-    console.log("tracking touch events");
   } else {
     window.addEventListener("click", createWind);
-    console.log("tracking click events");
   }
 }
 
@@ -879,38 +641,20 @@ function removeEventListeners() {
 function updateEventListeners() {
   if (window.innerWidth <= 700) {
     removeEventListeners();
-    // initEventListeners();
+    
+    cameraScale = 14;
+    updateCameraScale()
     window.addEventListener("touchstart", createWind);
     console.log("tracking touch events");
   } else {
     removeEventListeners();
-    // initEventListeners();
+    
+    cameraScale = 28;
+    updateCameraScale()
     window.addEventListener("click", createWind);
     console.log("tracking click events");
   }
 }
-
-// function initEventListeners() {
-//   let widthMatch = window.matchMedia("(max-width: 700px)");
-
-//   if (widthMatch.matches) {
-//     window.addEventListener("touchstart", createWind);
-//   } else {
-//     window.addEventListener("click", createWind);
-//   }
-
-//   widthMatch.addEventListener("change", function (mm) {
-//     if (mm.matches) {
-//       window.removeEventListener("click", createWind);
-//       window.addEventListener("touchstart", createWind);
-//       console.log("tracking touch events");
-//     } else {
-//       window.removeEventListener("touchstart", createWind);
-//       window.addEventListener("click", createWind);
-//       console.log("tracking click events");
-//     }
-//   });
-// }
 
 async function createWind() {
   const startingPos = new THREE.Vector3(
@@ -926,9 +670,11 @@ async function createWind() {
   );
 
   if (triedToRemembers.length === forgottens.length) {
-    isDone = true;
+    startTime = null;
+    clothMaterial.transparent = true;
+    requestAnimationFrame(fadeOutCloth(startTime));
     console.log("you've forgotten everything");
-    influence = 0; // this doesn't work
+    console.log(clothMaterial);
     return;
   }
 
@@ -945,11 +691,7 @@ async function createWind() {
   textObjects.push(sprite);
 
   capsuleBody = capsule.userData.physicsBody;
-  capsuleBody.setLinearVelocity(windVelocity); // comment this back in!
-  // capsuleBody.setLinearVelocity(new Ammo.btVector3(0.1, 0, 0)); // comment this back in!
-  // setTimeout(() => {
-  //   capsuleBody.setLinearVelocity(windVelocity); // comment this back in!
-  // }, 1000);
+  capsuleBody.setLinearVelocity(windVelocity); 
 }
 
 function getWeightedRandIndex() {
@@ -979,4 +721,25 @@ function getApproxTextWidth(text) {
   const approxCharWidth = textHeight * 70; // hand-refined
   const textWidth = text.length * approxCharWidth;
   return textWidth;
+}
+
+function fadeOutCloth(time) {
+  const duration = 6000;
+
+  if (!startTime) {
+    startTime = time;
+  }
+
+  let elapsedTime = time - startTime;
+  let fraction = elapsedTime / duration;
+
+  let easeOutFraction = 1 - Math.pow(1 - fraction, 2);
+
+  clothMaterial.opacity = 1 - easeOutFraction; 
+
+  if (elapsedTime < duration) {
+    requestAnimationFrame(fadeOutCloth);
+  } else {
+    clothMaterial.opacity = 0; 
+  }
 }
