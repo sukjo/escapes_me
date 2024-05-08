@@ -7,6 +7,7 @@ let scene, clock, controls, camera;
 let directionalLight;
 let webglrenderer;
 let triedToRemembers = [];
+let isDone = false;
 let clothMaterial;
 let influence;
 let startTime = null;
@@ -452,7 +453,7 @@ function updateCameraScale() {
   camera.top = window.innerHeight / cameraScale + cameraVOffset;
   camera.bottom = -window.innerHeight / cameraScale + cameraVOffset;
   camera.updateProjectionMatrix();
-  console.log("camera scale: ", cameraScale);
+  // console.log("camera scale: ", cameraScale);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -645,53 +646,15 @@ function updateEventListeners() {
     cameraScale = 14;
     updateCameraScale()
     window.addEventListener("touchstart", createWind);
-    console.log("tracking touch events");
+    // console.log("tracking touch events");
   } else {
     removeEventListeners();
     
     cameraScale = 28;
     updateCameraScale()
     window.addEventListener("click", createWind);
-    console.log("tracking click events");
+    // console.log("tracking click events");
   }
-}
-
-async function createWind() {
-  const startingPos = new THREE.Vector3(
-    THREE.MathUtils.randFloat(clothPos.x / 2 - 9, clothPos.x / 2 - 5), // x
-    THREE.MathUtils.randFloat(
-      clothPos.y + clothHeight / 2,
-      clothPos.y + clothHeight
-    ), // y
-    THREE.MathUtils.randFloat(
-      clothPos.z - clothWidth - pylonWidth,
-      clothPos.z - pylonWidth
-    ) // z
-  );
-
-  if (triedToRemembers.length === forgottens.length) {
-    startTime = null;
-    clothMaterial.transparent = true;
-    requestAnimationFrame(fadeOutCloth(startTime));
-    console.log("you've forgotten everything");
-    console.log(clothMaterial);
-    return;
-  }
-
-  const index = getWeightedRandIndex();
-  triedToRemembers.push(index);
-
-  let sprite = createSpriteText(forgottens[index].forgotten);
-  sprite.position.copy(startingPos);
-  scene.add(sprite);
-  capsule = createCapsule(
-    getApproxTextWidth(forgottens[index].forgotten),
-    startingPos
-  );
-  textObjects.push(sprite);
-
-  capsuleBody = capsule.userData.physicsBody;
-  capsuleBody.setLinearVelocity(windVelocity); 
 }
 
 function getWeightedRandIndex() {
@@ -723,16 +686,48 @@ function getApproxTextWidth(text) {
   return textWidth;
 }
 
-function fadeOutCloth(time) {
-  const duration = 6000;
+async function createWind() {
+  if (triedToRemembers.length === forgottens.length) {
+    isDone = true;
+    return true;
+  }
 
+  const startingPos = new THREE.Vector3(
+    THREE.MathUtils.randFloat(clothPos.x / 2 - 9, clothPos.x / 2 - 5), // x
+    THREE.MathUtils.randFloat(
+      clothPos.y + clothHeight / 2,
+      clothPos.y + clothHeight
+    ), // y
+    THREE.MathUtils.randFloat(
+      clothPos.z - clothWidth - pylonWidth,
+      clothPos.z - pylonWidth
+    ) // z
+  );
+
+  const index = getWeightedRandIndex();
+  triedToRemembers.push(index);
+
+  let sprite = createSpriteText(forgottens[index].forgotten);
+  sprite.position.copy(startingPos);
+  scene.add(sprite);
+  capsule = createCapsule(
+    getApproxTextWidth(forgottens[index].forgotten),
+    startingPos
+  );
+  textObjects.push(sprite);
+
+  capsuleBody = capsule.userData.physicsBody;
+  capsuleBody.setLinearVelocity(windVelocity); 
+}
+
+function fadeOutCloth(time) {
   if (!startTime) {
     startTime = time;
   }
-
+  
+  const duration = 8000;
   let elapsedTime = time - startTime;
   let fraction = elapsedTime / duration;
-
   let easeOutFraction = 1 - Math.pow(1 - fraction, 2);
 
   clothMaterial.opacity = 1 - easeOutFraction; 
@@ -743,3 +738,16 @@ function fadeOutCloth(time) {
     clothMaterial.opacity = 0; 
   }
 }
+
+async function endScene() {
+  if (!isDone) {
+    setTimeout(endScene, 1000);
+    
+  } else {
+    clothMaterial.transparent = true;
+    requestAnimationFrame(fadeOutCloth);
+    console.log("you've forgotten everything");
+  }
+}
+
+endScene();
