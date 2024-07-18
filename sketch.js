@@ -1,11 +1,11 @@
 import * as THREE from "three";
 import SpriteText from "three-spritetext";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import forgottens from "./forgottens.json" with { type: "json" };
 
 let scene, clock, controls, camera;
 let directionalLight;
 let webglrenderer;
+let forgottens = [];
 let triedToRemembers = [];
 let isDone = false;
 let clothMaterial;
@@ -38,6 +38,24 @@ let fontSize = 150;
 let textObjects = [];
 
 const cameraStartingPos = new THREE.Vector3(-6.7, 9.3, 10);
+
+/* -------------------------------------------------------------------------- */
+/*                              fetch forgottens                              */
+/* -------------------------------------------------------------------------- */
+
+fetch("./forgottens.json")
+  .then((response) => {
+    if (!response.ok) {
+      throw new Error("network response was not ok");
+    }
+    return response.json();
+  })
+  .then((data) => {
+    forgottens = data;
+  })
+  .catch((error) => {
+    console.error("fetch operation issue:", error);
+  });
 
 /* -------------------------------------------------------------------------- */
 /*                                    ammo                                    */
@@ -96,7 +114,6 @@ function initScene() {
     updateEventListeners();
   });
 }
-
 
 /* -------------------------------------------------------------------------- */
 /*                                  renderers                                 */
@@ -205,8 +222,8 @@ function initObjects() {
     true
   );
   const sbConfig = clothSoftBody.get_m_cfg();
-  sbConfig.set_viterations(10); 
-  sbConfig.set_piterations(10); 
+  sbConfig.set_viterations(10);
+  sbConfig.set_piterations(10);
 
   clothSoftBody.setTotalMass(0.9, false);
   Ammo.castObject(clothSoftBody, Ammo.btCollisionObject)
@@ -272,7 +289,7 @@ function initObjects() {
   );
 
   /* ------------------------------- constraints ------------------------------ */
-  
+
   const FoR_top_left = new Ammo.btTransform();
   FoR_top_left.setIdentity();
   FoR_top_left.setOrigin(new Ammo.btVector3(0, 0, -frameTopLength / 2));
@@ -471,12 +488,7 @@ function addLighting() {
   const length = 60;
   const intensity = 1.5;
 
-  const rectLight = new THREE.RectAreaLight(
-    0x4e00ff,
-    intensity,
-    width,
-    length
-  );
+  const rectLight = new THREE.RectAreaLight(0x4e00ff, intensity, width, length);
   rectLight.position.set(rectX, pylonHeight * 2, offset);
   rectLight.rotation.set(0, -Math.PI / 2, 0);
   rectLight.lookAt(clothPos.x, clothPos.y, clothPos.z - frameTopLength / 2);
@@ -488,7 +500,7 @@ function addLighting() {
     width,
     length
   );
-  rectLight_1.position.set(rectX, pylonHeight * 2, -length/2 - offset);
+  rectLight_1.position.set(rectX, pylonHeight * 2, -length / 2 - offset);
   rectLight_1.rotation.set(0, -Math.PI / 2, 0);
   rectLight_1.lookAt(clothPos.x, clothPos.y, clothPos.z - frameTopLength / 2);
   scene.add(rectLight_1);
@@ -611,13 +623,13 @@ function removeBodies() {
 
     // not the most precise method, since ww wh are 2D and also do not factor in camera angle. but it'll do for now
     if (pos.x < -ww || pos.x > ww || pos.y < -wh || pos.y > wh) {
-      scene.remove(capsule); 
-      physicsWorld.removeRigidBody(capsule.userData.physicsBody); 
+      scene.remove(capsule);
+      physicsWorld.removeRigidBody(capsule.userData.physicsBody);
       scene.remove(textObj);
 
       rigidBodies.splice(i, 1);
       textObjects.splice(i, 1);
-      i--; 
+      i--;
     }
   }
 }
@@ -642,16 +654,16 @@ function removeEventListeners() {
 function updateEventListeners() {
   if (window.innerWidth <= 700) {
     removeEventListeners();
-    
+
     cameraScale = 14;
-    updateCameraScale()
+    updateCameraScale();
     window.addEventListener("touchstart", createWind);
     // console.log("tracking touch events");
   } else {
     removeEventListeners();
-    
+
     cameraScale = 28;
-    updateCameraScale()
+    updateCameraScale();
     window.addEventListener("click", createWind);
     // console.log("tracking click events");
   }
@@ -717,32 +729,31 @@ async function createWind() {
   textObjects.push(sprite);
 
   capsuleBody = capsule.userData.physicsBody;
-  capsuleBody.setLinearVelocity(windVelocity); 
+  capsuleBody.setLinearVelocity(windVelocity);
 }
 
 function fadeOutCloth(time) {
   if (!startTime) {
     startTime = time;
   }
-  
+
   const duration = 8000;
   let elapsedTime = time - startTime;
   let fraction = elapsedTime / duration;
   let easeOutFraction = 1 - Math.pow(1 - fraction, 2);
 
-  clothMaterial.opacity = 1 - easeOutFraction; 
+  clothMaterial.opacity = 1 - easeOutFraction;
 
   if (elapsedTime < duration) {
     requestAnimationFrame(fadeOutCloth);
   } else {
-    clothMaterial.opacity = 0; 
+    clothMaterial.opacity = 0;
   }
 }
 
 async function endScene() {
   if (!isDone) {
     setTimeout(endScene, 1000);
-    
   } else {
     clothMaterial.transparent = true;
     requestAnimationFrame(fadeOutCloth);
