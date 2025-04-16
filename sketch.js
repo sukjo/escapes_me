@@ -721,7 +721,6 @@ async function createWind() {
   let sprite = createSpriteText(forgottens[index].forgotten);
   sprite.position.copy(startingPos);
   scene.add(sprite);
-  console.log(`index: ${triedToRemembers.length} / ${forgottens.length}`);
   capsule = createCapsule(
     getApproxTextWidth(forgottens[index].forgotten),
     startingPos
