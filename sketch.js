@@ -162,6 +162,9 @@ function initObjects() {
   const pos = new THREE.Vector3();
   const quat = new THREE.Euler();
 
+  const axesHelper = new THREE.AxesHelper(20);
+  scene.add(axesHelper);
+
   /* -------------------------- cloth graphic object -------------------------- */
 
   const clothNumSegmentsZ = clothWidth * clothSegmentsFactor; // more segments = more wrinkling
@@ -615,16 +618,13 @@ function createRigidBody(threeObject, physicsShape, mass, pos, eu) {
 }
 
 function removeBodies() {
-  const ww = window.innerWidth / 2;
-  const wh = window.innerHeight / 2;
-
-  for (let i = 0; i < rigidBodies.length; i++) {
+  const killY = -15;
+  for (let i = rigidBodies.length - 1; i >= 0; i--) {
     const capsule = rigidBodies[i];
     const textObj = textObjects[i];
     const pos = capsule.position;
 
-    // not the most precise method, since ww wh are 2D and also do not factor in camera angle. but it'll do for now
-    if (pos.x < -ww || pos.x > ww || pos.y < -wh || pos.y > wh) {
+    if (pos.y < killY) {
       scene.remove(capsule);
       physicsWorld.removeRigidBody(capsule.userData.physicsBody);
       scene.remove(textObj);
@@ -724,6 +724,7 @@ async function createWind() {
   let sprite = createSpriteText(forgottens[index].forgotten);
   sprite.position.copy(startingPos);
   scene.add(sprite);
+  console.log(`index: ${triedToRemembers.length} / ${forgottens.length}`);
   capsule = createCapsule(
     getApproxTextWidth(forgottens[index].forgotten),
     startingPos
