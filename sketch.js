@@ -162,9 +162,6 @@ function initObjects() {
   const pos = new THREE.Vector3();
   const quat = new THREE.Euler();
 
-  const axesHelper = new THREE.AxesHelper(20);
-  scene.add(axesHelper);
-
   /* -------------------------- cloth graphic object -------------------------- */
 
   const clothNumSegmentsZ = clothWidth * clothSegmentsFactor; // more segments = more wrinkling
