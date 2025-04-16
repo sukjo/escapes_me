@@ -33,8 +33,9 @@ let cameraNear = -100;
 let cameraFar = 100;
 
 let capsule, capsuleBody, windVelocity;
-let textHeight = 0.01;
-let fontSize = 150;
+
+let textHeight = 2;
+let fontSize = 90; // default
 let textObjects = [];
 
 const cameraStartingPos = new THREE.Vector3(-6.7, 9.3, 10);
@@ -569,8 +570,9 @@ function createSpriteText(text) {
   sT.textHeight = textHeight;
   sT.fontSize = fontSize;
   sT.strokeWidth = 0;
-  sT.backgroundColor = "rgba(0, 0, 0, 0)";
+  sT.backgroundColor = false;
   sT.padding = 1;
+
   return sT;
 }
 
@@ -693,7 +695,7 @@ function getWeightedRandIndex() {
 }
 
 function getApproxTextWidth(text) {
-  const approxCharWidth = textHeight * 70; // hand-refined
+  const approxCharWidth = textHeight * 0.35; // hand-refined
   const textWidth = text.length * approxCharWidth;
   return textWidth;
 }
