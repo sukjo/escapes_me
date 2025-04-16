@@ -713,8 +713,8 @@ async function createWind() {
       clothPos.y + clothHeight
     ), // y
     THREE.MathUtils.randFloat(
-      clothPos.z - clothWidth - pylonWidth,
-      clothPos.z - pylonWidth
+      clothPos.z - clothWidth - pylonWidth + 3,
+      clothPos.z - pylonWidth - 3
     ) // z
   );
 
