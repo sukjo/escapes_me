@@ -121,6 +121,14 @@
     "forgotten": "that I had a hand in my own fate"
   },
   {
+    "type": "sentimental",
+    "forgotten": "to be serious"
+  },
+  {
+    "type": "sentimental",
+    "forgotten": "to be light"
+  },
+  {
     "type": "logistical",
     "forgotten": "my house keys, over and over again"
   },
@@ -131,6 +139,10 @@
   {
     "type": "sentimental",
     "forgotten": "to assume the best of people"
+  },
+  {
+    "type": "sentimental",
+    "forgotten": "that I was lost as much as I was free"
   },
   {
     "type": "logistical",
@@ -199,6 +211,10 @@
   {
     "type": "logistical",
     "forgotten": "my passport in a drawer 677 miles away"
+  },
+  {
+    "type": "logistical",
+    "forgotten": "the query I raised my hand for"
   },
   {
     "type": "logistical",
